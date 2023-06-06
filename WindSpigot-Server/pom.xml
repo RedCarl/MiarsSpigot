@@ -36,7 +36,7 @@
 		<dependency>
 			<groupId>io.netty</groupId>
 			<artifactId>netty-all</artifactId>
-			<version>4.1.68.Final</version>
+			<version>4.1.90.Final</version>
 		</dependency>
 
 		<dependency>
@@ -192,7 +192,7 @@
 				<artifactId>maven-jar-plugin</artifactId>
 				<version>3.2.2</version>
 				<configuration>
-					<finalName>WindSpigot</finalName>
+					<finalName>KazerSpigot</finalName>
 					<forceCreation>true</forceCreation> <!-- Required to prevent shading the jar multiple times -->
 					<archive>
 						<manifestEntries>

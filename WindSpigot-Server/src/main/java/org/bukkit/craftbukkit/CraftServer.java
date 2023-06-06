@@ -23,6 +23,7 @@ import java.util.regex.Pattern;
 
 import javax.imageio.ImageIO;
 
+import gg.kazerspigot.knockback.KnockBackConfig;
 import org.apache.commons.lang.Validate;
 import org.bukkit.BanList;
 import org.bukkit.Bukkit;
@@ -120,7 +121,6 @@ import com.mojang.authlib.GameProfile;
 import ga.windpvp.windspigot.async.entitytracker.AsyncEntityTracker;
 import ga.windpvp.windspigot.commons.PluginUtils;
 import ga.windpvp.windspigot.config.WindSpigotConfig;
-import ga.windpvp.windspigot.knockback.KnockbackConfig;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.Unpooled;
@@ -843,8 +843,12 @@ public final class CraftServer implements Server {
 		org.github.paperspigot.PaperSpigotConfig.init((File) console.options.valueOf("paper-settings")); // PaperSpigot
 		net.techcable.tacospigot.TacoSpigotConfig.init((File) console.options.valueOf("taco-settings")); // TacoSpigot
 		NachoConfig.init((File) console.options.valueOf("nacho-settings")); // NachoSpigot
-		KnockbackConfig.init((File) console.options.valueOf("knockback-settings"));
-		
+		// KnockbackConfig.init((File) console.options.valueOf("knockback-settings"));
+
+		// Kazer start
+		KnockBackConfig.getInstance();
+		// Kazer end
+
 		// WindSpigot start - config
 		WindSpigotConfig.init((File) console.options.valueOf("windspigot-settings"));
 		// WindSpigot end

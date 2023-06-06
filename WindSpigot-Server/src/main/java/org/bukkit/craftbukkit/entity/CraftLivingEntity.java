@@ -7,6 +7,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
+import gg.kazerspigot.knockback.KnockBackProfile;
 import org.apache.commons.lang.Validate;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -40,7 +41,6 @@ import org.bukkit.util.BlockIterator;
 import org.bukkit.util.NumberConversions;
 import org.bukkit.util.Vector;
 
-import dev.cobblesword.nachospigot.knockback.KnockbackProfile;
 import net.minecraft.server.DamageSource;
 import net.minecraft.server.EntityArmorStand;
 import net.minecraft.server.EntityArrow;
@@ -298,7 +298,6 @@ public class CraftLivingEntity extends CraftEntity implements LivingEntity {
 	public void setNoDamageTicks(int ticks) {
 		getHandle().noDamageTicks = ticks;
 	}
-
 	@Override
 	public EntityLiving getHandle() {
 		return (EntityLiving) entity;
@@ -608,14 +607,14 @@ public class CraftLivingEntity extends CraftEntity implements LivingEntity {
 		}
 	}
 	// TacoSpigot end
-
-	@Override
-	public KnockbackProfile getKnockbackProfile() {
-		return getHandle().getKnockbackProfile();
-	}
-
-	@Override
-	public void setKnockbackProfile(KnockbackProfile profile) {
-		getHandle().setKnockbackProfile(profile);
-	}
+//
+//	@Override
+//	public KnockbackProfile getKnockbackProfile() {
+//		return getHandle().getKnockbackProfile();
+//	}
+//
+//	@Override
+//	public void setKnockbackProfile(KnockbackProfile profile) {
+//		getHandle().setKnockbackProfile(profile);
+//	}
 }

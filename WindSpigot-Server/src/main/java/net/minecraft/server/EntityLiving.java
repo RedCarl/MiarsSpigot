@@ -9,6 +9,8 @@ import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 
+import gg.kazerspigot.knockback.KnockBackConfig;
+import gg.kazerspigot.knockback.KnockBackProfile;
 import org.bukkit.Bukkit;
 import org.bukkit.craftbukkit.event.CraftEventFactory;
 import org.bukkit.entity.LivingEntity;
@@ -23,10 +25,8 @@ import com.google.common.base.Function;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
-import dev.cobblesword.nachospigot.knockback.KnockbackProfile;
 import ga.windpvp.windspigot.cache.Constants;
 import ga.windpvp.windspigot.config.WindSpigotConfig;
-import ga.windpvp.windspigot.knockback.KnockbackConfig;
 
 public abstract class EntityLiving extends Entity {
 
@@ -97,6 +97,9 @@ public abstract class EntityLiving extends Entity {
 	
 	// WindSpigot
 	private boolean hasDisabledMovement = false;
+
+	// KazerSpigot
+	private DamageSource lastDamageSource;
 	
 	// Spigot start
 	@Override
@@ -217,15 +220,7 @@ public abstract class EntityLiving extends Entity {
 
 		if (this.isAlive()) {
 			if (this.a(Material.WATER)) {
-				if (!this.canBreatheUnderwater() && !this.hasEffect(MobEffectList.WATER_BREATHING.id) && !flag1) { // Paper
-																													// -
-																													// use
-																													// OBFHELPER
-																													// so
-																													// it
-																													// can
-																													// be
-																													// overridden
+				if (!this.canBreatheUnderwater() && !this.hasEffect(MobEffectList.WATER_BREATHING.id) && !flag1) {
 					this.setAirTicks(this.j(this.getAirTicks()));
 					if (this.getAirTicks() == -20) {
 						this.setAirTicks(0);
@@ -244,7 +239,7 @@ public abstract class EntityLiving extends Entity {
 				}
 
 				if (!this.world.isClientSide && this.au() && this.vehicle instanceof EntityLiving) {
-					this.mount((Entity) null);
+					this.mount(null);
 				}
 			} else // CraftBukkit start - Only set if needed to work around a DataWatcher
 			// inefficiency
@@ -750,138 +745,242 @@ public abstract class EntityLiving extends Entity {
 		this.datawatcher.watch(6, Float.valueOf(MathHelper.a(f, 0.0F, this.getMaxHealth())));
 	}
 
+//	@Override
+//	public boolean damageEntity(DamageSource damagesource, float f) {
+//		if (this.isInvulnerable(damagesource)) {
+//			return false;
+//		} else if (this.world.isClientSide) {
+//			return false;
+//		} else {
+//			this.ticksFarFromPlayer = 0;
+//			if (this.getHealth() <= 0.0F) {
+//				return false;
+//			} else if (damagesource.o() && this.hasEffect(MobEffectList.FIRE_RESISTANCE)) {
+//				return false;
+//			} else {
+//				// WindSpigot - remove dead code
+//				// CraftBukkit - Moved into d(DamageSource, float)
+//				/*if (false && (damagesource == DamageSource.ANVIL || damagesource == DamageSource.FALLING_BLOCK)
+//						&& this.getEquipment(4) != null) {
+//					this.getEquipment(4).damage((int) (f * 4.0F + this.random.nextFloat() * f * 2.0F), this);
+//					f *= 0.75F;
+//				}*/
+//
+//				this.aB = 1.5F;
+//				boolean flag = true;
+//
+//				if (this.noDamageTicks > this.maxNoDamageTicks / 2.0F) {
+//					if (f <= this.lastDamage) {
+//						this.forceExplosionKnockback = true; // CraftBukkit - SPIGOT-949 - for vanilla consistency,
+//																// cooldown does not prevent explosion knockback
+//						return false;
+//					}
+//
+//					// CraftBukkit start
+//					if (!this.d(damagesource, f - this.lastDamage)) {
+//						return false;
+//					}
+//					// CraftBukkit end
+//					this.lastDamage = f;
+//					flag = false;
+//				} else {
+//					// CraftBukkit start
+//					float previousHealth = this.getHealth();
+//					if (!this.d(damagesource, f)) {
+//						return false;
+//					}
+//					this.lastDamage = f;
+//					this.noDamageTicks = this.maxNoDamageTicks;
+//					// CraftBukkit end
+//					this.hurtTicks = this.av = 10;
+//				}
+//
+//				// CraftBukkit start
+//				if (this instanceof EntityAnimal) {
+//					((EntityAnimal) this).cq();
+//					if (this instanceof EntityTameableAnimal) {
+//						((EntityTameableAnimal) this).getGoalSit().setSitting(false);
+//					}
+//				}
+//				// CraftBukkit end
+//
+//				this.aw = 0.0F;
+//				Entity entity = damagesource.getEntity();
+//
+//				if (entity != null) {
+//					if (entity instanceof EntityLiving) {
+//						this.b((EntityLiving) entity);
+//					}
+//
+//					if (entity instanceof EntityHuman) {
+//						this.lastDamageByPlayerTime = 100;
+//						this.killer = (EntityHuman) entity;
+//					} else if (entity instanceof EntityWolf) {
+//						EntityWolf entitywolf = (EntityWolf) entity;
+//
+//						if (entitywolf.isTamed()) {
+//							this.lastDamageByPlayerTime = 100;
+//							this.killer = null;
+//						}
+//					}
+//				}
+//
+//				// PaperSpigot start - Disable explosion knockback
+//				boolean knockbackCancelled = false;
+//				if (flag && !(knockbackCancelled = world.paperSpigotConfig.disableExplosionKnockback
+//						&& damagesource.isExplosion() && this instanceof EntityHuman)) {
+//					// PaperSpigot end
+//					this.world.broadcastEntityEffect(this, (byte) 2);
+//					if (damagesource != DamageSource.DROWN) {
+//						this.ac();
+//					}
+//
+//					if (entity != null) {
+//						double distanceX = entity.locX - this.locX;
+//
+//						double distanceZ;
+//
+//						// WindSpigot start - use faster randoms
+//						for (distanceZ = entity.locZ - this.locZ; distanceX * distanceX + distanceZ * distanceZ < 1.0E-4D; distanceZ = (random.nextDouble() - random.nextDouble()) * 0.01D) {
+//							distanceX = (random.nextDouble() - random.nextDouble()) * 0.01D;
+//						}
+//
+//						this.aw = (float) (MathHelper.b(distanceZ, distanceX) * 180.0D / 3.1415927410125732D
+//								- this.yaw);
+//						this.a(distanceX, distanceZ, damagesource);
+//					} else {
+//						this.aw = (int) (random.nextDouble() * 2.0D) * 180;
+//						// WindSpigot end
+//					}
+//				}
+//
+//				if (knockbackCancelled) {
+//					this.world.broadcastEntityEffect(this, (byte) 2); // PaperSpigot
+//				}
+//
+//				String s;
+//
+//				if (this.getHealth() <= 0.0F) {
+//					s = this.bp();
+//					if (flag && s != null) {
+//						this.makeSound(s, this.bB(), this.bC());
+//					}
+//
+//					this.die(damagesource);
+//				} else {
+//					s = this.bo();
+//					if (flag && s != null) {
+//						this.makeSound(s, this.bB(), this.bC());
+//					}
+//				}
+//
+//				return true;
+//			}
+//		}
+//	}
+
+	// Kazer Todo KnockBack
 	@Override
 	public boolean damageEntity(DamageSource damagesource, float f) {
-		if (this.isInvulnerable(damagesource)) {
+		if (isInvulnerable(damagesource)) {
 			return false;
-		} else if (this.world.isClientSide) {
+		}
+		if (this.world.isClientSide) {
 			return false;
+		}
+		this.ticksFarFromPlayer = 0;
+		if (getHealth() <= 0.0F) {
+			return false;
+		}
+		if (damagesource.o() && hasEffect(MobEffectList.FIRE_RESISTANCE)) {
+			return false;
+		}
+		this.aB = 1.5F;
+		boolean flag = true;
+		if (this.noDamageTicks > this.maxNoDamageTicks / 2.0F) {
+			KnockBackProfile profile = (this instanceof EntityHuman) ? ((EntityHuman)this).getKnockBack() : KnockBackConfig.getInstance().getDefault();
+			if (!profile.doubleDamage.value &&
+					damagesource.translationIndex.equalsIgnoreCase(this.lastDamageSource.translationIndex)) {
+				return false;
+			}
+			if (f <= this.lastDamage) {
+				this.forceExplosionKnockback = true;
+				return false;
+			}
+			if (!d(damagesource, f - this.lastDamage)) {
+				return false;
+			}
+			this.lastDamage = f;
+			flag = false;
 		} else {
-			this.ticksFarFromPlayer = 0;
-			if (this.getHealth() <= 0.0F) {
+			getHealth();
+			if (!d(damagesource, f)) {
 				return false;
-			} else if (damagesource.o() && this.hasEffect(MobEffectList.FIRE_RESISTANCE)) {
-				return false;
-			} else {
-				// WindSpigot - remove dead code
-				// CraftBukkit - Moved into d(DamageSource, float)
-				/*if (false && (damagesource == DamageSource.ANVIL || damagesource == DamageSource.FALLING_BLOCK)
-						&& this.getEquipment(4) != null) {
-					this.getEquipment(4).damage((int) (f * 4.0F + this.random.nextFloat() * f * 2.0F), this);
-					f *= 0.75F;
-				}*/
-
-				this.aB = 1.5F;
-				boolean flag = true;
-
-				if (this.noDamageTicks > this.maxNoDamageTicks / 2.0F) {
-					if (f <= this.lastDamage) {
-						this.forceExplosionKnockback = true; // CraftBukkit - SPIGOT-949 - for vanilla consistency,
-																// cooldown does not prevent explosion knockback
-						return false;
-					}
-
-					// CraftBukkit start
-					if (!this.d(damagesource, f - this.lastDamage)) {
-						return false;
-					}
-					// CraftBukkit end
-					this.lastDamage = f;
-					flag = false;
-				} else {
-					// CraftBukkit start
-					float previousHealth = this.getHealth();
-					if (!this.d(damagesource, f)) {
-						return false;
-					}
-					this.lastDamage = f;
-					this.noDamageTicks = this.maxNoDamageTicks;
-					// CraftBukkit end
-					this.hurtTicks = this.av = 10;
-				}
-
-				// CraftBukkit start
-				if (this instanceof EntityAnimal) {
-					((EntityAnimal) this).cq();
-					if (this instanceof EntityTameableAnimal) {
-						((EntityTameableAnimal) this).getGoalSit().setSitting(false);
-					}
-				}
-				// CraftBukkit end
-
-				this.aw = 0.0F;
-				Entity entity = damagesource.getEntity();
-
-				if (entity != null) {
-					if (entity instanceof EntityLiving) {
-						this.b((EntityLiving) entity);
-					}
-
-					if (entity instanceof EntityHuman) {
-						this.lastDamageByPlayerTime = 100;
-						this.killer = (EntityHuman) entity;
-					} else if (entity instanceof EntityWolf) {
-						EntityWolf entitywolf = (EntityWolf) entity;
-
-						if (entitywolf.isTamed()) {
-							this.lastDamageByPlayerTime = 100;
-							this.killer = null;
-						}
-					}
-				}
-
-				// PaperSpigot start - Disable explosion knockback
-				boolean knockbackCancelled = false;
-				if (flag && !(knockbackCancelled = world.paperSpigotConfig.disableExplosionKnockback
-						&& damagesource.isExplosion() && this instanceof EntityHuman)) {
-					// PaperSpigot end
-					this.world.broadcastEntityEffect(this, (byte) 2);
-					if (damagesource != DamageSource.DROWN) {
-						this.ac();
-					}
-
-					if (entity != null) {
-						double distanceX = entity.locX - this.locX;
-
-						double distanceZ;
-
-						// WindSpigot start - use faster randoms
-						for (distanceZ = entity.locZ - this.locZ; distanceX * distanceX + distanceZ * distanceZ < 1.0E-4D; distanceZ = (random.nextDouble() - random.nextDouble()) * 0.01D) {
-							distanceX = (random.nextDouble() - random.nextDouble()) * 0.01D;
-						}
-
-						this.aw = (float) (MathHelper.b(distanceZ, distanceX) * 180.0D / 3.1415927410125732D
-								- this.yaw);
-						this.a(distanceX, distanceZ, damagesource);
-					} else {
-						this.aw = (int) (random.nextDouble() * 2.0D) * 180;
-						// WindSpigot end
-					}
-				}
-
-				if (knockbackCancelled) {
-					this.world.broadcastEntityEffect(this, (byte) 2); // PaperSpigot
-				}
-
-				String s;
-
-				if (this.getHealth() <= 0.0F) {
-					s = this.bp();
-					if (flag && s != null) {
-						this.makeSound(s, this.bB(), this.bC());
-					}
-
-					this.die(damagesource);
-				} else {
-					s = this.bo();
-					if (flag && s != null) {
-						this.makeSound(s, this.bB(), this.bC());
-					}
-				}
-
-				return true;
+			}
+			this.lastDamageSource = damagesource;
+			this.lastDamage = f;
+			this.noDamageTicks = this.maxNoDamageTicks;
+			this.hurtTicks = this.av = 10;
+		}
+		if (this instanceof EntityAnimal) {
+			((EntityAnimal)this).cq();
+			if (this instanceof EntityTameableAnimal) {
+				((EntityTameableAnimal)this).getGoalSit().setSitting(false);
 			}
 		}
+		this.aw = 0.0F;
+		Entity entity = damagesource.getEntity();
+		if (entity != null) {
+			if (entity instanceof EntityLiving) {
+				b((EntityLiving)entity);
+			}
+			if (entity instanceof EntityHuman) {
+				this.lastDamageByPlayerTime = 100;
+				this.killer = (EntityHuman)entity;
+			} else if (entity instanceof EntityWolf) {
+				EntityWolf entitywolf = (EntityWolf)entity;
+				if (entitywolf.isTamed()) {
+					this.lastDamageByPlayerTime = 100;
+					this.killer = null;
+				}
+			}
+		}
+		boolean knockbackCancelled = false;
+		if (flag) {
+			if (!(knockbackCancelled = (this.world.paperSpigotConfig.disableExplosionKnockback && damagesource.isExplosion() && this instanceof EntityHuman))) {
+				this.world.broadcastEntityEffect(this, (byte)2);
+				if (damagesource != DamageSource.DROWN) {
+					ac();
+				}
+				if (entity != null) {
+					double d0 = entity.locX - this.locX;
+					double d1;
+					for (d1 = entity.locZ - this.locZ; d0 * d0 + d1 * d1 < 1.0E-4D; d1 = (Math.random() - Math.random()) * 0.01D) {
+						d0 = (Math.random() - Math.random()) * 0.01D;
+					}
+					this.aw = (float)(MathHelper.b(d1, d0) * 180.0D / 3.1415927410125732D - this.yaw);
+					a(entity, f, d0, d1);;
+				} else {
+					this.aw = ((int)(Math.random() * 2.0D) * 180);
+				}
+			}
+		}
+		if (knockbackCancelled) {
+			this.world.broadcastEntityEffect(this, (byte)2);
+		}
+		if (getHealth() <= 0.0F) {
+			String s = bp();
+			if (flag && s != null) {
+				makeSound(s, bB(), bC());
+			}
+			die(damagesource);
+		} else {
+			String s = bo();
+			if (flag && s != null) {
+				makeSound(s, bB(), bC());
+			}
+		}
+		return true;
 	}
 
 	public void b(ItemStack itemstack) {
@@ -949,84 +1048,103 @@ public abstract class EntityLiving extends Entity {
 	protected void dropEquipment(boolean flag, int i) {
 	}
 
-	public void a(double x, double z, DamageSource source) {
-		if (this.random.nextDouble() >= this.getAttributeInstance(GenericAttributes.c).getValue()) {
+//	public void a(double x, double z, DamageSource source) {
+//		if (this.random.nextDouble() >= this.getAttributeInstance(GenericAttributes.c).getValue()) {
+//			this.ai = true;
+//
+//			double magnitude = Math.sqrt(Math.pow(x, 2) + Math.pow(z, 2));
+//			double horizontal = 0.4D;
+//			double vertical = 0.4D;
+//
+//			KnockbackProfile kb = (this.getKnockbackProfile() == null) ? KnockbackConfig.getCurrentKb()
+//					: this.getKnockbackProfile();
+//
+//			if (source instanceof EntityDamageSourceIndirect) {
+//				if (((EntityDamageSourceIndirect) source).getProximateDamageSource() instanceof EntityFishingHook) {
+//					horizontal = kb.getRodHorizontal();
+//					vertical = kb.getRodVertical();
+//				} else if (((EntityDamageSourceIndirect) source).getProximateDamageSource() instanceof EntityArrow) {
+//					horizontal = kb.getArrowHorizontal();
+//					vertical = kb.getArrowVertical();
+//				} else if (((EntityDamageSourceIndirect) source).getProximateDamageSource() instanceof EntitySnowball) {
+//					horizontal = kb.getSnowballHorizontal();
+//					vertical = kb.getSnowballVertical();
+//				} else if (((EntityDamageSourceIndirect) source).getProximateDamageSource() instanceof EntityEgg) {
+//					horizontal = kb.getEggHorizontal();
+//					vertical = kb.getEggVertical();
+//				} else if (((EntityDamageSourceIndirect) source).getProximateDamageSource() instanceof EntityEnderPearl) {
+//					horizontal = kb.getPearlHorizontal();
+//					vertical = kb.getPearlVertical();
+//				} else {
+//					horizontal = kb.getHorizontal();
+//					vertical = kb.getVertical();
+//				}
+//			} else {
+//				horizontal = kb.getHorizontal();
+//				vertical = kb.getVertical();
+//			}
+//
+//			// WindSpigot start - correct knockback friction (change to division instead of multiplication)
+//			this.motX /= kb.getFrictionHorizontal();
+//			this.motY /= kb.getFrictionVertical();
+//			this.motZ /= kb.getFrictionHorizontal();
+//			// WindSpigot end
+//
+//			this.motX -= x / magnitude * horizontal;
+//			this.motY += vertical;
+//			this.motZ -= z / magnitude * horizontal;
+//
+//			// WindSpigot start - knockback addition config
+//			double addHorizontalX = kb.getAddHorizontal();
+//			double addHorizontalZ = kb.getAddHorizontal();
+//
+//			if (motX < 0) {
+//				addHorizontalX = -addHorizontalX;
+//			}
+//			if (motZ < 0) {
+//				addHorizontalZ = -addHorizontalZ;
+//			}
+//
+//			if (motX > motZ) {
+//				double zXRatio = Math.abs(z) / Math.abs(x);
+//				motX += addHorizontalX;
+//				motZ += addHorizontalZ * zXRatio;
+//			} else if (motZ > motX) {
+//				double xZRatio = Math.abs(x) / Math.abs(z);
+//				motX += addHorizontalX * xZRatio;
+//				motZ += addHorizontalZ;
+//			} else {
+//				motX += addHorizontalX;
+//				motZ += addHorizontalZ;
+//			}
+//
+//			motY += kb.getAddVertical();
+//			// WindSpigot end
+//
+//			if (this.motY > kb.getVerticalMax()) {
+//				this.motY = kb.getVerticalMax();
+//			}
+//			if (this.motY < kb.getVerticalMin()) {
+//				this.motY = kb.getVerticalMin();
+//			}
+//		}
+//	}
+
+//	 Kazer Item Knockback
+	public void a(Entity entity, float f, double d0, double d1) {
+		if (this.random.nextDouble() >= getAttributeInstance(GenericAttributes.c).getValue()) {
+			KnockBackProfile profile = (this instanceof EntityHuman) ? ((EntityHuman)this).getKnockBack() : KnockBackConfig.getInstance().getDefault();
 			this.ai = true;
-
-			double magnitude = Math.sqrt(Math.pow(x, 2) + Math.pow(z, 2));
-			double horizontal = 0.4D;
-			double vertical = 0.4D;
-
-			KnockbackProfile kb = (this.getKnockbackProfile() == null) ? KnockbackConfig.getCurrentKb()
-					: this.getKnockbackProfile();
-
-			if (source instanceof EntityDamageSourceIndirect) {
-				if (((EntityDamageSourceIndirect) source).getProximateDamageSource() instanceof EntityFishingHook) {
-					horizontal = kb.getRodHorizontal();
-					vertical = kb.getRodVertical();
-				} else if (((EntityDamageSourceIndirect) source).getProximateDamageSource() instanceof EntityArrow) {
-					horizontal = kb.getArrowHorizontal();
-					vertical = kb.getArrowVertical();
-				} else if (((EntityDamageSourceIndirect) source).getProximateDamageSource() instanceof EntitySnowball) {
-					horizontal = kb.getSnowballHorizontal();
-					vertical = kb.getSnowballVertical();
-				} else if (((EntityDamageSourceIndirect) source).getProximateDamageSource() instanceof EntityEgg) {
-					horizontal = kb.getEggHorizontal();
-					vertical = kb.getEggVertical();
-				} else if (((EntityDamageSourceIndirect) source).getProximateDamageSource() instanceof EntityEnderPearl) {
-					horizontal = kb.getPearlHorizontal();
-					vertical = kb.getPearlVertical();
-				} else {
-					horizontal = kb.getHorizontal();
-					vertical = kb.getVertical();
-				}
-			} else {
-				horizontal = kb.getHorizontal();
-				vertical = kb.getVertical();
-			}
-
-			// WindSpigot start - correct knockback friction (change to division instead of multiplication)
-			this.motX /= kb.getFrictionHorizontal();
-			this.motY /= kb.getFrictionVertical();
-			this.motZ /= kb.getFrictionHorizontal();
-			// WindSpigot end
-
-			this.motX -= x / magnitude * horizontal;
-			this.motY += vertical;
-			this.motZ -= z / magnitude * horizontal;
-						
-			// WindSpigot start - knockback addition config
-			double addHorizontalX = kb.getAddHorizontal();
-			double addHorizontalZ = kb.getAddHorizontal();
-
-			if (motX < 0) {
-				addHorizontalX = -addHorizontalX;
-			}
-			if (motZ < 0) {
-				addHorizontalZ = -addHorizontalZ;
-			}
-			
-			if (motX > motZ) {
-				double zXRatio = Math.abs(z) / Math.abs(x);
-				motX += addHorizontalX;
-				motZ += addHorizontalZ * zXRatio;
-			} else if (motZ > motX) {
-				double xZRatio = Math.abs(x) / Math.abs(z);			
-				motX += addHorizontalX * xZRatio;
-				motZ += addHorizontalZ;
-			} else {
-				motX += addHorizontalX;
-				motZ += addHorizontalZ;			
-			}
-			
-			motY += kb.getAddVertical();
-			// WindSpigot end
-			
-			if (this.motY > kb.getVerticalMax()) {
-				this.motY = kb.getVerticalMax();
-			}
-			if (this.motY < kb.getVerticalMin()) {
-				this.motY = kb.getVerticalMin();
+			float f1 = MathHelper.sqrt(d0 * d0 + d1 * d1);
+			double magnitude = f1;
+			this.motX /= profile.sprint.value ? (((entity instanceof EntityPlayer) ? ((EntityPlayer) entity).shouldDealSprintKnockBack : entity.isSprinting()) ? profile.sprintFrictionH.value : profile.frictionH.value) : profile.frictionH.value;
+			this.motY /= profile.sprint.value ? (((entity instanceof EntityPlayer) ? ((EntityPlayer) entity).shouldDealSprintKnockBack : entity.isSprinting()) ? profile.sprintFrictionV.value : profile.frictionV.value) : profile.frictionV.value;
+			this.motZ /= profile.sprint.value ? (((entity instanceof EntityPlayer) ? ((EntityPlayer) entity).shouldDealSprintKnockBack : entity.isSprinting()) ? profile.sprintFrictionH.value : profile.frictionH.value) : profile.frictionH.value;
+			this.motX -= d0 / magnitude * (profile.sprint.value ? (((entity instanceof EntityPlayer) ? ((EntityPlayer) entity).shouldDealSprintKnockBack : entity.isSprinting()) ? profile.sprintHorizontal.value : profile.horizontal.value) : profile.horizontal.value);
+			this.motY += profile.sprint.value ? (((entity instanceof EntityPlayer) ? ((EntityPlayer) entity).shouldDealSprintKnockBack : entity.isSprinting()) ? profile.sprintVertical.value : profile.vertical.value) : profile.vertical.value;
+			this.motZ -= d1 / magnitude * (profile.sprint.value ? (((entity instanceof EntityPlayer) ? ((EntityPlayer) entity).shouldDealSprintKnockBack : entity.isSprinting()) ? profile.sprintHorizontal.value : profile.horizontal.value) : profile.horizontal.value);
+			if (this.motY > (profile.sprint.value ? (((entity instanceof EntityPlayer) ? ((EntityPlayer) entity).shouldDealSprintKnockBack : entity.isSprinting()) ? profile.sprintVlimit.value : profile.vlimit.value) : profile.vlimit.value)) {
+				this.motY = profile.sprint.value ? (((entity instanceof EntityPlayer) ? ((EntityPlayer) entity).shouldDealSprintKnockBack : entity.isSprinting()) ? profile.sprintVlimit.value : profile.vlimit.value) : profile.vlimit.value;
 			}
 		}
 	}

@@ -2,10 +2,15 @@ package net.minecraft.server;
 
 import java.util.List;
 
+import gg.kazerspigot.knockback.KnockBackProfile;
 import org.bukkit.Bukkit;
+import org.bukkit.craftbukkit.entity.CraftPlayer;
+import org.bukkit.craftbukkit.event.CraftEventFactory;
 import org.bukkit.entity.Arrow;
 // TacoSpigot end
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
+import org.bukkit.entity.Player;
 import org.bukkit.event.entity.EntityCombustByEntityEvent;
 import org.bukkit.event.player.PlayerPickupItemEvent;
 
@@ -13,6 +18,8 @@ import ga.windpvp.windspigot.cache.Constants;
 // CraftBukkit end
 // TacoSpigot start
 import net.techcable.tacospigot.event.entity.ArrowCollideEvent;
+import org.bukkit.event.player.PlayerVelocityEvent;
+import org.bukkit.util.Vector;
 
 public class EntityArrow extends Entity implements IProjectile {
 
@@ -133,227 +140,168 @@ public class EntityArrow extends Entity implements IProjectile {
 
 	@Override
 	public void t_() {
+		BlockPosition blockposition;
+		IBlockData iblockdata;
+		Block block;
 		super.t_();
-		if (this.lastPitch == 0.0F && this.lastYaw == 0.0F) {
+		if (this.lastPitch == 0.0f && this.lastYaw == 0.0f) {
 			float f = MathHelper.sqrt(this.motX * this.motX + this.motZ * this.motZ);
-
-			this.lastYaw = this.yaw = (float) (MathHelper.b(this.motX, this.motZ) * 180.0D / 3.1415927410125732D);
-			this.lastPitch = this.pitch = (float) (MathHelper.b(this.motY, f) * 180.0D / 3.1415927410125732D);
+			this.lastYaw = this.yaw = (float)(MathHelper.b(this.motX, this.motZ) * 180.0 / 3.1415927410125732);
+			this.lastPitch = this.pitch = (float)(MathHelper.b(this.motY, f) * 180.0 / 3.1415927410125732);
 		}
-
-		BlockPosition blockposition = new BlockPosition(this.d, this.e, this.f);
-		IBlockData iblockdata = this.world.getType(blockposition);
-		Block block = iblockdata.getBlock();
-
-		if (block.getMaterial() != Material.AIR) {
+		if ((block = (iblockdata = this.world.getType(blockposition = new BlockPosition(this.d, this.e, this.f))).getBlock()).getMaterial() != Material.AIR) {
 			block.updateShape(this.world, blockposition);
 			AxisAlignedBB axisalignedbb = block.a(this.world, blockposition, iblockdata);
-
 			if (axisalignedbb != null && axisalignedbb.a(new Vec3D(this.locX, this.locY, this.locZ))) {
 				this.inGround = true;
 			}
 		}
-
 		if (this.shake > 0) {
 			--this.shake;
 		}
-
 		if (this.inGround) {
 			int i = block.toLegacyData(iblockdata);
-
 			if (block == this.g && i == this.h) {
 				++this.ar;
-				if (this.ar >= world.spigotConfig.arrowDespawnRate) { // Spigot - First int after shooter
+				if (this.ar >= this.world.spigotConfig.arrowDespawnRate) {
 					this.die();
 				}
 			} else {
 				this.inGround = false;
-				this.motX *= this.random.nextFloat() * 0.2F;
-				this.motY *= this.random.nextFloat() * 0.2F;
-				this.motZ *= this.random.nextFloat() * 0.2F;
+				this.motX *= this.random.nextFloat() * 0.2f;
+				this.motY *= this.random.nextFloat() * 0.2f;
+				this.motZ *= this.random.nextFloat() * 0.2f;
 				this.ar = 0;
 				this.as = 0;
 			}
-
 		} else {
+			float f1;
+			int j;
 			++this.as;
 			Vec3D vec3d = new Vec3D(this.locX, this.locY, this.locZ);
 			Vec3D vec3d1 = new Vec3D(this.locX + this.motX, this.locY + this.motY, this.locZ + this.motZ);
 			MovingObjectPosition movingobjectposition = this.world.rayTrace(vec3d, vec3d1, false, true, false);
-
 			vec3d = new Vec3D(this.locX, this.locY, this.locZ);
 			vec3d1 = new Vec3D(this.locX + this.motX, this.locY + this.motY, this.locZ + this.motZ);
 			if (movingobjectposition != null) {
 				vec3d1 = new Vec3D(movingobjectposition.pos.a, movingobjectposition.pos.b, movingobjectposition.pos.c);
 			}
-
 			Entity entity = null;
-			List list = this.world.getEntities(this,
-					this.getBoundingBox().a(this.motX, this.motY, this.motZ).grow(1.0D, 1.0D, 1.0D));
-			double d0 = 0.0D;
-
-			int j;
-			float f1;
-
+			List<Entity> list = this.world.getEntities(this, this.getBoundingBox().a(this.motX, this.motY, this.motZ).grow(1.0, 1.0, 1.0));
+			double d0 = 0.0;
 			for (j = 0; j < list.size(); ++j) {
-				Entity entity1 = (Entity) list.get(j);
-
-				if (entity1.ad() && (entity1 != this.shooter || this.as >= 5)) {
-					f1 = 0.3F;
-					AxisAlignedBB axisalignedbb1 = entity1.getBoundingBox().grow(f1, f1, f1);
-					MovingObjectPosition movingobjectposition1 = axisalignedbb1.a(vec3d, vec3d1);
-
-					if (movingobjectposition1 != null) {
-						double d1 = vec3d.distanceSquared(movingobjectposition1.pos);
-
-						if (d1 < d0 || d0 == 0.0D) {
-							entity = entity1;
-							d0 = d1;
-						}
-					}
+				double d1;
+				Entity entity1 = list.get(j);
+				if (!entity1.ad() || entity1 == this.shooter && this.as < 5) {
+					continue;
 				}
+				f1 = 0.3f;
+				AxisAlignedBB axisalignedbb1 = entity1.getBoundingBox().grow(f1, f1, f1);
+				MovingObjectPosition movingobjectposition1 = axisalignedbb1.a(vec3d, vec3d1);
+				if (movingobjectposition1 == null || !((d1 = vec3d.distanceSquared(movingobjectposition1.pos)) < d0) && d0 != 0.0) {
+					continue;
+				}
+				entity = entity1;
+				d0 = d1;
 			}
-
 			if (entity != null) {
 				movingobjectposition = new MovingObjectPosition(entity);
 			}
-
-			if (movingobjectposition != null && movingobjectposition.entity != null
-					&& movingobjectposition.entity instanceof EntityHuman) {
-				EntityHuman entityhuman = (EntityHuman) movingobjectposition.entity;
-
-				if (entityhuman.abilities.isInvulnerable
-						|| this.shooter instanceof EntityHuman && !((EntityHuman) this.shooter).a(entityhuman)) {
+			if (movingobjectposition != null && movingobjectposition.entity != null && movingobjectposition.entity instanceof EntityHuman) {
+				EntityHuman entityhuman = (EntityHuman)movingobjectposition.entity;
+				if (entityhuman.abilities.isInvulnerable || this.shooter instanceof EntityHuman && !((EntityHuman)this.shooter).a(entityhuman)) {
 					movingobjectposition = null;
 				}
 			}
-
-			float f2;
-			float f3;
-
-			// PaperSpigot start - Allow arrows to fly through vanished players the shooter
-			// can't see
-			if (movingobjectposition != null && movingobjectposition.entity instanceof EntityPlayer && shooter != null
-					&& shooter instanceof EntityPlayer) {
-				if (!((EntityPlayer) shooter).getBukkitEntity()
-						.canSee(((EntityPlayer) movingobjectposition.entity).getBukkitEntity())) {
-					movingobjectposition = null;
-				}
+			if (movingobjectposition != null && movingobjectposition.entity instanceof EntityPlayer && this.shooter != null && this.shooter instanceof EntityPlayer && !((EntityPlayer)this.shooter).getBukkitEntity().canSee(((EntityPlayer)movingobjectposition.entity).getBukkitEntity())) {
+				movingobjectposition = null;
 			}
-			// PaperSpigot end
-			// TacoSpigot start - call better event
-			if (movingobjectposition != null && movingobjectposition.entity != null) {
-				ArrowCollideEvent collideEvent = new ArrowCollideEvent((Arrow) getBukkitEntity(),
-						movingobjectposition.entity.getBukkitEntity());
-				Bukkit.getPluginManager().callEvent(collideEvent);
-				if (collideEvent.isCancelled()) {
-					movingobjectposition = null;
-				}
-			}
-			// TacoSpigot end
 			if (movingobjectposition != null) {
-				org.bukkit.craftbukkit.event.CraftEventFactory.callProjectileHitEvent(this); // CraftBukkit - Call event
+				CraftEventFactory.callProjectileHitEvent(this);
 				if (movingobjectposition.entity != null) {
-					f2 = MathHelper.sqrt(this.motX * this.motX + this.motY * this.motY + this.motZ * this.motZ);
-					int k = MathHelper.f(f2 * this.damage);
-
+					DamageSource damagesource;
+					float f2 = MathHelper.sqrt(this.motX * this.motX + this.motY * this.motY + this.motZ * this.motZ);
+					int k = MathHelper.f((double)f2 * this.damage);
 					if (this.isCritical()) {
 						k += this.random.nextInt(k / 2 + 2);
 					}
-
-					DamageSource damagesource;
-
-					if (this.shooter == null) {
-						damagesource = DamageSource.arrow(this, this);
-					} else {
-						damagesource = DamageSource.arrow(this, this.shooter);
-					}
-
-					// CraftBukkit start - Moved damage call
-					if (movingobjectposition.entity.damageEntity(damagesource, k)) {
-						if (this.isBurning() && !(movingobjectposition.entity instanceof EntityEnderman)
-								&& (!(movingobjectposition.entity instanceof EntityPlayer)
-										|| !(this.shooter instanceof EntityPlayer) || this.world.pvpMode)) { // CraftBukkit
-																												// -
-																												// abide
-																												// by
-																												// pvp
-																												// setting
-																												// if
-																												// destination
-																												// is a
-																												// player
-							EntityCombustByEntityEvent combustEvent = new EntityCombustByEntityEvent(
-									this.getBukkitEntity(), entity.getBukkitEntity(), 5);
-							org.bukkit.Bukkit.getPluginManager().callEvent(combustEvent);
+					if (movingobjectposition.entity.damageEntity(damagesource = this.shooter == null ? DamageSource.arrow(this, this) : DamageSource.arrow(this, this.shooter), k)) {
+						if (!(!this.isBurning() || movingobjectposition.entity instanceof EntityEnderman || movingobjectposition.entity instanceof EntityPlayer && this.shooter instanceof EntityPlayer && !this.world.pvpMode)) {
+							EntityCombustByEntityEvent combustEvent = new EntityCombustByEntityEvent(this.getBukkitEntity(), entity.getBukkitEntity(), 5);
+							Bukkit.getPluginManager().callEvent(combustEvent);
 							if (!combustEvent.isCancelled()) {
 								movingobjectposition.entity.setOnFire(combustEvent.getDuration());
 							}
-							// CraftBukkit end
 						}
-
-						// if (movingobjectposition.entity.damageEntity(damagesource, (float) k)) { //
-						// CraftBukkit - moved up
 						if (movingobjectposition.entity instanceof EntityLiving) {
-							EntityLiving entityliving = (EntityLiving) movingobjectposition.entity;
-
+							float f3;
+							EntityLiving entityliving = (EntityLiving)movingobjectposition.entity;
 							if (!this.world.isClientSide) {
 								entityliving.o(entityliving.bv() + 1);
 							}
-
-							if (this.knockbackStrength > 0) {
-								f3 = MathHelper.sqrt(this.motX * this.motX + this.motZ * this.motZ);
-								if (f3 > 0.0F) {
-									movingobjectposition.entity.g(
-											this.motX * this.knockbackStrength * 0.6000000238418579D / f3, 0.1D,
-											this.motZ * this.knockbackStrength * 0.6000000238418579D / f3);
+							if (movingobjectposition.entity.getBukkitEntity().getType() == EntityType.PLAYER) {
+								EntityPlayer hit = ((CraftPlayer)movingobjectposition.entity.getBukkitEntity()).getHandle();
+								if (this.shooter != null && this.shooter != hit && this.shooter instanceof EntityPlayer) {
+									((EntityPlayer)this.shooter).playerConnection.sendPacket(new PacketPlayOutGameStateChange(6, 0.0f));
 								}
+								KnockBackProfile kb2 = hit.getKnockBack();
+								Vector v = new Vector(this.motX, this.motY, this.motZ).normalize();
+								double velX = v.getX() / 1.6 * kb2.bowH.value;
+								double velY = 0.36 * kb2.bowV.value;
+								double velZ = v.getZ() / 1.6 * kb2.bowH.value;
+								if (this.knockbackStrength > 0) {
+									velX *= (double)this.knockbackStrength * (double)0.6f + 1.0;
+									velY *= 1.0;
+									velZ *= (double)this.knockbackStrength * (double)0.6f + 1.0;
+								}
+								PlayerVelocityEvent playerVelocityEvent = new PlayerVelocityEvent(hit.getBukkitEntity(), new Vector(velX, velY, velZ));
+								Bukkit.getPluginManager().callEvent(playerVelocityEvent);
+								if (!playerVelocityEvent.isCancelled()) {
+									hit.playerConnection.sendPacket(new PacketPlayOutEntityVelocity(hit.getId(), velX, velY, velZ));
+									hit.velocityChanged = false;
+									hit.motX = velX;
+									hit.motY = velY;
+									hit.motZ = velZ;
+								}
+							} else if (this.knockbackStrength > 0 && (f3 = MathHelper.sqrt(this.motX * this.motX + this.motZ * this.motZ)) > 0.0f) {
+								movingobjectposition.entity.g(this.motX * (double)this.knockbackStrength * (double)0.6f / (double)f3, 0.1, this.motZ * (double)this.knockbackStrength * (double)0.6f / (double)f3);
 							}
-
 							if (this.shooter instanceof EntityLiving) {
 								EnchantmentManager.a(entityliving, this.shooter);
-								EnchantmentManager.b((EntityLiving) this.shooter, entityliving);
+								EnchantmentManager.b((EntityLiving)this.shooter, entityliving);
 							}
-
-							if (this.shooter != null && movingobjectposition.entity != this.shooter
-									&& movingobjectposition.entity instanceof EntityHuman
-									&& this.shooter instanceof EntityPlayer) {
-								((EntityPlayer) this.shooter).playerConnection
-										.sendPacket(new PacketPlayOutGameStateChange(6, 0.0F));
+							if (this.shooter != null && movingobjectposition.entity != this.shooter && movingobjectposition.entity instanceof EntityHuman && this.shooter instanceof EntityPlayer) {
+								((EntityPlayer)this.shooter).playerConnection.sendPacket(new PacketPlayOutGameStateChange(6, 0.0f));
 							}
 						}
-
-						world.makeSound(movingobjectposition.entity, "random.bowhit", 1.0F,
-								1.2F / (this.random.nextFloat() * 0.2F + 0.9F));
+						this.makeSound("random.bowhit", 1.0f, 1.2f / (this.random.nextFloat() * 0.2f + 0.9f));
 						if (!(movingobjectposition.entity instanceof EntityEnderman)) {
 							this.die();
 						}
 					} else {
-						this.motX *= -0.10000000149011612D;
-						this.motY *= -0.10000000149011612D;
-						this.motZ *= -0.10000000149011612D;
-						this.yaw += 180.0F;
-						this.lastYaw += 180.0F;
+						this.motX *= -0.1f;
+						this.motY *= -0.1f;
+						this.motZ *= -0.1f;
+						this.yaw += 180.0f;
+						this.lastYaw += 180.0f;
 						this.as = 0;
 					}
 				} else {
 					BlockPosition blockposition1 = movingobjectposition.a();
-
 					this.d = blockposition1.getX();
 					this.e = blockposition1.getY();
 					this.f = blockposition1.getZ();
 					IBlockData iblockdata1 = this.world.getType(blockposition1);
-
 					this.g = iblockdata1.getBlock();
 					this.h = this.g.toLegacyData(iblockdata1);
-					this.motX = ((float) (movingobjectposition.pos.a - this.locX));
-					this.motY = ((float) (movingobjectposition.pos.b - this.locY));
-					this.motZ = ((float) (movingobjectposition.pos.c - this.locZ));
+					this.motX = (float)(movingobjectposition.pos.a - this.locX);
+					this.motY = (float)(movingobjectposition.pos.b - this.locY);
+					this.motZ = (float)(movingobjectposition.pos.c - this.locZ);
 					f1 = MathHelper.sqrt(this.motX * this.motX + this.motY * this.motY + this.motZ * this.motZ);
-					this.locX -= this.motX / f1 * 0.05000000074505806D;
-					this.locY -= this.motY / f1 * 0.05000000074505806D;
-					this.locZ -= this.motZ / f1 * 0.05000000074505806D;
-					world.makeSound(d, e, f, "random.bowhit", 1.0F, 1.2F / (this.random.nextFloat() * 0.2F + 0.9F));
+					this.locX -= this.motX / (double)f1 * (double)0.05f;
+					this.locY -= this.motY / (double)f1 * (double)0.05f;
+					this.locZ -= this.motZ / (double)f1 * (double)0.05f;
+					this.makeSound("random.bowhit", 1.0f, 1.2f / (this.random.nextFloat() * 0.2f + 0.9f));
 					this.inGround = true;
 					this.shake = 7;
 					this.setCritical(false);
@@ -362,58 +310,43 @@ public class EntityArrow extends Entity implements IProjectile {
 					}
 				}
 			}
-
 			if (this.isCritical()) {
 				for (j = 0; j < 4; ++j) {
-					this.world.addParticle(EnumParticle.CRIT, this.locX + this.motX * j / 4.0D,
-							this.locY + this.motY * j / 4.0D, this.locZ + this.motZ * j / 4.0D, -this.motX,
-							-this.motY + 0.2D, -this.motZ, Constants.EMPTY_ARRAY);
+					this.world.addParticle(EnumParticle.CRIT, this.locX + this.motX * (double)j / 4.0, this.locY + this.motY * (double)j / 4.0, this.locZ + this.motZ * (double)j / 4.0, -this.motX, -this.motY + 0.2, -this.motZ, new int[0]);
 				}
 			}
-
 			this.locX += this.motX;
 			this.locY += this.motY;
 			this.locZ += this.motZ;
-			f2 = MathHelper.sqrt(this.motX * this.motX + this.motZ * this.motZ);
-			this.yaw = (float) (MathHelper.b(this.motX, this.motZ) * 180.0D / 3.1415927410125732D);
-
-			for (this.pitch = (float) (MathHelper.b(this.motY, f2) * 180.0D / 3.1415927410125732D); this.pitch
-					- this.lastPitch < -180.0F; this.lastPitch -= 360.0F) {
-				;
+			float f2 = MathHelper.sqrt(this.motX * this.motX + this.motZ * this.motZ);
+			this.yaw = (float)(MathHelper.b(this.motX, this.motZ) * 180.0 / 3.1415927410125732);
+			this.pitch = (float)(MathHelper.b(this.motY, f2) * 180.0 / 3.1415927410125732);
+			while (this.pitch - this.lastPitch < -180.0f) {
+				this.lastPitch -= 360.0f;
 			}
-
-			while (this.pitch - this.lastPitch >= 180.0F) {
-				this.lastPitch += 360.0F;
+			while (this.pitch - this.lastPitch >= 180.0f) {
+				this.lastPitch += 360.0f;
 			}
-
-			while (this.yaw - this.lastYaw < -180.0F) {
-				this.lastYaw -= 360.0F;
+			while (this.yaw - this.lastYaw < -180.0f) {
+				this.lastYaw -= 360.0f;
 			}
-
-			while (this.yaw - this.lastYaw >= 180.0F) {
-				this.lastYaw += 360.0F;
+			while (this.yaw - this.lastYaw >= 180.0f) {
+				this.lastYaw += 360.0f;
 			}
-
-			this.pitch = this.lastPitch + (this.pitch - this.lastPitch) * 0.2F;
-			this.yaw = this.lastYaw + (this.yaw - this.lastYaw) * 0.2F;
-			float f4 = 0.99F;
-
-			f1 = 0.05F;
+			this.pitch = this.lastPitch + (this.pitch - this.lastPitch) * 0.2f;
+			this.yaw = this.lastYaw + (this.yaw - this.lastYaw) * 0.2f;
+			float f4 = 0.99f;
+			f1 = 0.05f;
 			if (this.V()) {
 				for (int l = 0; l < 4; ++l) {
-					f3 = 0.25F;
-					this.world.addParticle(EnumParticle.WATER_BUBBLE, this.locX - this.motX * f3,
-							this.locY - this.motY * f3, this.locZ - this.motZ * f3, this.motX, this.motY, this.motZ,
-							Constants.EMPTY_ARRAY);
+					float f3 = 0.25f;
+					this.world.addParticle(EnumParticle.WATER_BUBBLE, this.locX - this.motX * (double)f3, this.locY - this.motY * (double)f3, this.locZ - this.motZ * (double)f3, this.motX, this.motY, this.motZ, new int[0]);
 				}
-
-				f4 = 0.6F;
+				f4 = 0.6f;
 			}
-
 			if (this.U()) {
 				this.extinguish();
 			}
-
 			this.motX *= f4;
 			this.motY *= f4;
 			this.motZ *= f4;

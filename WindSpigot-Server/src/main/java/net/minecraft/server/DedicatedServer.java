@@ -1,30 +1,27 @@
 package net.minecraft.server;
 
-import java.io.File;
-import java.io.IOException;
-// CraftBukkit start
-import java.io.PrintStream;
-import java.net.InetAddress;
-import java.net.Proxy;
-import java.util.concurrent.Callable;
-import java.util.concurrent.TimeUnit;
-
+import co.aikar.timings.SpigotTimings;
+import ga.windpvp.windspigot.WindSpigot;
+import ga.windpvp.windspigot.commons.IPUtils;
+import ga.windpvp.windspigot.config.WindSpigotConfig;
 import ga.windpvp.windspigot.random.FastRandom;
+import gg.kazerspigot.knockback.KnockBackConfig;
+import me.elier.nachospigot.config.NachoConfig;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.bukkit.craftbukkit.LoggerOutputStream;
 import org.bukkit.craftbukkit.util.Waitable;
 import org.bukkit.event.server.RemoteServerCommandEvent;
-// CraftBukkit end
 import org.bukkit.event.server.ServerCommandEvent;
 
-import co.aikar.timings.SpigotTimings; // Spigot
-import ga.windpvp.windspigot.WindSpigot;
-import ga.windpvp.windspigot.commons.IPUtils;
-import ga.windpvp.windspigot.config.WindSpigotConfig;
-import ga.windpvp.windspigot.knockback.KnockbackConfig;
-import me.elier.nachospigot.config.NachoConfig;
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintStream;
+import java.net.InetAddress;
+import java.net.Proxy;
+import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
 
 public class DedicatedServer extends MinecraftServer implements IMinecraftServer {
 
@@ -186,8 +183,12 @@ public class DedicatedServer extends MinecraftServer implements IMinecraftServer
 			}
 			// Spigot start
 			NachoConfig.init((File) options.valueOf("nacho-settings")); // NachoSpigot - Load config before PlayerList
-			KnockbackConfig.init((File) options.valueOf("knockback-settings"));
-			
+			// KnockbackConfig.init((File) options.valueOf("knockback-settings"));
+
+			// Kazer start
+			KnockBackConfig.getInstance();
+			// Kazer end
+
 			// WindSpigot start - config
 			WindSpigotConfig.init((File) options.valueOf("windspigot-settings"));
 			// WindSpigot end

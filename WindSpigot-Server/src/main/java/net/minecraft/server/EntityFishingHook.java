@@ -3,6 +3,10 @@ package net.minecraft.server;
 import java.util.Arrays;
 import java.util.List;
 
+import gg.kazerspigot.knockback.KnockBackProfile;
+import org.bukkit.Bukkit;
+import org.bukkit.craftbukkit.entity.CraftPlayer;
+import org.bukkit.craftbukkit.event.CraftEventFactory;
 import org.bukkit.entity.Fish;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerFishEvent;
@@ -10,33 +14,34 @@ import org.bukkit.event.player.PlayerFishEvent;
 
 import ga.windpvp.windspigot.cache.Constants;
 import ga.windpvp.windspigot.config.WindSpigotConfig;
+import org.bukkit.event.player.PlayerVelocityEvent;
+import org.bukkit.util.Vector;
 
 public class EntityFishingHook extends Entity {
 
 	private static final List<PossibleFishingResult> d = Arrays.asList(
-			new PossibleFishingResult[] { (new PossibleFishingResult(new ItemStack(Items.LEATHER_BOOTS), 10)).a(0.9F),
-					new PossibleFishingResult(new ItemStack(Items.LEATHER), 10),
-					new PossibleFishingResult(new ItemStack(Items.BONE), 10),
-					new PossibleFishingResult(new ItemStack(Items.POTION), 10),
-					new PossibleFishingResult(new ItemStack(Items.STRING), 5),
-					(new PossibleFishingResult(new ItemStack(Items.FISHING_ROD), 2)).a(0.9F),
-					new PossibleFishingResult(new ItemStack(Items.BOWL), 10),
-					new PossibleFishingResult(new ItemStack(Items.STICK), 5),
-					new PossibleFishingResult(new ItemStack(Items.DYE, 10, EnumColor.BLACK.getInvColorIndex()), 1),
-					new PossibleFishingResult(new ItemStack(Blocks.TRIPWIRE_HOOK), 10),
-					new PossibleFishingResult(new ItemStack(Items.ROTTEN_FLESH), 10) });
+			(new PossibleFishingResult(new ItemStack(Items.LEATHER_BOOTS), 10)).a(0.9F),
+			new PossibleFishingResult(new ItemStack(Items.LEATHER), 10),
+			new PossibleFishingResult(new ItemStack(Items.BONE), 10),
+			new PossibleFishingResult(new ItemStack(Items.POTION), 10),
+			new PossibleFishingResult(new ItemStack(Items.STRING), 5),
+			(new PossibleFishingResult(new ItemStack(Items.FISHING_ROD), 2)).a(0.9F),
+			new PossibleFishingResult(new ItemStack(Items.BOWL), 10),
+			new PossibleFishingResult(new ItemStack(Items.STICK), 5),
+			new PossibleFishingResult(new ItemStack(Items.DYE, 10, EnumColor.BLACK.getInvColorIndex()), 1),
+			new PossibleFishingResult(new ItemStack(Blocks.TRIPWIRE_HOOK), 10),
+			new PossibleFishingResult(new ItemStack(Items.ROTTEN_FLESH), 10));
 	private static final List<PossibleFishingResult> e = Arrays
-			.asList(new PossibleFishingResult[] { new PossibleFishingResult(new ItemStack(Blocks.WATERLILY), 1),
+			.asList(new PossibleFishingResult(new ItemStack(Blocks.WATERLILY), 1),
 					new PossibleFishingResult(new ItemStack(Items.NAME_TAG), 1),
 					new PossibleFishingResult(new ItemStack(Items.SADDLE), 1),
 					(new PossibleFishingResult(new ItemStack(Items.BOW), 1)).a(0.25F).a(),
 					(new PossibleFishingResult(new ItemStack(Items.FISHING_ROD), 1)).a(0.25F).a(),
-					(new PossibleFishingResult(new ItemStack(Items.BOOK), 1)).a() });
-	private static final List<PossibleFishingResult> f = Arrays.asList(new PossibleFishingResult[] {
-			new PossibleFishingResult(new ItemStack(Items.FISH, 1, ItemFish.EnumFish.COD.a()), 60),
+					(new PossibleFishingResult(new ItemStack(Items.BOOK), 1)).a());
+	private static final List<PossibleFishingResult> f = Arrays.asList(new PossibleFishingResult(new ItemStack(Items.FISH, 1, ItemFish.EnumFish.COD.a()), 60),
 			new PossibleFishingResult(new ItemStack(Items.FISH, 1, ItemFish.EnumFish.SALMON.a()), 25),
 			new PossibleFishingResult(new ItemStack(Items.FISH, 1, ItemFish.EnumFish.CLOWNFISH.a()), 2),
-			new PossibleFishingResult(new ItemStack(Items.FISH, 1, ItemFish.EnumFish.PUFFERFISH.a()), 13) });
+			new PossibleFishingResult(new ItemStack(Items.FISH, 1, ItemFish.EnumFish.PUFFERFISH.a()), 13));
 	private int g = -1;
 	private int h = -1;
 	private int i = -1;
@@ -120,305 +125,241 @@ public class EntityFishingHook extends Entity {
 	public void t_() {
 		super.t_();
 		if (this.az > 0) {
-			double d0 = this.locX + (this.aA - this.locX) / this.az;
-			double d1 = this.locY + (this.aB - this.locY) / this.az;
-			double d2 = this.locZ + (this.aC - this.locZ) / this.az;
-			double d3 = MathHelper.g(this.aD - this.yaw);
-
-			this.yaw = (float) (this.yaw + d3 / this.az);
-			this.pitch = (float) (this.pitch + (this.aE - this.pitch) / this.az);
+			double d0 = this.locX + (this.aA - this.locX) / (double)this.az;
+			double d1 = this.locY + (this.aB - this.locY) / (double)this.az;
+			double d2 = this.locZ + (this.aC - this.locZ) / (double)this.az;
+			double d3 = MathHelper.g(this.aD - (double)this.yaw);
+			this.yaw = (float)((double)this.yaw + d3 / (double)this.az);
+			this.pitch = (float)((double)this.pitch + (this.aE - (double)this.pitch) / (double)this.az);
 			--this.az;
 			this.setPosition(d0, d1, d2);
 			this.setYawPitch(this.yaw, this.pitch);
 		} else {
+			double d6;
 			if (!this.world.isClientSide) {
 				ItemStack itemstack = this.owner.bZ();
-
-				if (this.owner.dead || !this.owner.isAlive() || itemstack == null
-						|| itemstack.getItem() != Items.FISHING_ROD || this.h(this.owner) > 1024.0D) {
+				if (this.owner.dead || !this.owner.isAlive() || itemstack == null || itemstack.getItem() != Items.FISHING_ROD || this.h(this.owner) > 1024.0) {
 					this.die();
 					this.owner.hookedFish = null;
 					return;
 				}
-
 				if (this.hooked != null) {
 					if (!this.hooked.dead) {
 						this.locX = this.hooked.locX;
 						double d4 = this.hooked.length;
-
-						this.locY = this.hooked.getBoundingBox().b + d4 * 0.8D;
+						this.locY = this.hooked.getBoundingBox().b + d4 * 0.8;
 						this.locZ = this.hooked.locZ;
 						return;
 					}
-
 					this.hooked = null;
 				}
 			}
-
 			if (this.a > 0) {
 				--this.a;
 			}
-
 			if (this.as) {
 				if (this.world.getType(new BlockPosition(this.g, this.h, this.i)).getBlock() == this.ar) {
 					++this.at;
 					if (this.at == 1200) {
 						this.die();
 					}
-
 					return;
 				}
-
 				this.as = false;
-				this.motX *= this.random.nextFloat() * 0.2F;
-				this.motY *= this.random.nextFloat() * 0.2F;
-				this.motZ *= this.random.nextFloat() * 0.2F;
+				this.motX *= this.random.nextFloat() * 0.2f;
+				this.motY *= this.random.nextFloat() * 0.2f;
+				this.motZ *= this.random.nextFloat() * 0.2f;
 				this.at = 0;
 				this.au = 0;
 			} else {
 				++this.au;
 			}
-
 			Vec3D vec3d = new Vec3D(this.locX, this.locY, this.locZ);
 			Vec3D vec3d1 = new Vec3D(this.locX + this.motX, this.locY + this.motY, this.locZ + this.motZ);
 			MovingObjectPosition movingobjectposition = this.world.rayTrace(vec3d, vec3d1);
-
 			vec3d = new Vec3D(this.locX, this.locY, this.locZ);
 			vec3d1 = new Vec3D(this.locX + this.motX, this.locY + this.motY, this.locZ + this.motZ);
 			if (movingobjectposition != null) {
 				vec3d1 = new Vec3D(movingobjectposition.pos.a, movingobjectposition.pos.b, movingobjectposition.pos.c);
 			}
-
 			Entity entity = null;
-			List list = this.world.getEntities(this,
-					this.getBoundingBox().a(this.motX, this.motY, this.motZ).grow(1.0D, 1.0D, 1.0D));
-			double d5 = 0.0D;
-
-			double d6;
-
-			for (int i = 0; i < list.size(); ++i) {
-				Entity entity1 = (Entity) list.get(i);
-
-				if (entity1.ad() && (entity1 != this.owner || this.au >= 5)) {
-					float f = 0.3F;
-					AxisAlignedBB axisalignedbb = entity1.getBoundingBox().grow(f, f, f);
-					MovingObjectPosition movingobjectposition1 = axisalignedbb.a(vec3d, vec3d1);
-
-					if (movingobjectposition1 != null) {
-						d6 = vec3d.distanceSquared(movingobjectposition1.pos);
-						if (d6 < d5 || d5 == 0.0D) {
-							entity = entity1;
-							d5 = d6;
-						}
-					}
+			List<Entity> list = this.world.getEntities(this, this.getBoundingBox().a(this.motX, this.motY, this.motZ).grow(1.0, 1.0, 1.0));
+			double d5 = 0.0;
+			for (Entity entity1 : list) {
+				if (!entity1.ad() || entity1 == this.owner && this.au < 5) {
+					continue;
 				}
+				float f = 0.3f;
+				AxisAlignedBB axisalignedbb = entity1.getBoundingBox().grow(f, f, f);
+				MovingObjectPosition movingobjectposition1 = axisalignedbb.a(vec3d, vec3d1);
+				if (movingobjectposition1 == null || !((d6 = vec3d.distanceSquared(movingobjectposition1.pos)) < d5) && d5 != 0.0) {
+					continue;
+				}
+				entity = entity1;
+				d5 = d6;
 			}
-
 			if (entity != null) {
 				movingobjectposition = new MovingObjectPosition(entity);
 			}
-
-			// PaperSpigot start - Allow fishing hooks to fly through vanished players the
-			// shooter can't see
-			if (movingobjectposition != null && movingobjectposition.entity instanceof EntityPlayer && owner != null
-					&& owner instanceof EntityPlayer) {
-				if (!((EntityPlayer) owner).getBukkitEntity()
-						.canSee(((EntityPlayer) movingobjectposition.entity).getBukkitEntity())) {
-					movingobjectposition = null;
-				}
+			if (movingobjectposition != null && movingobjectposition.entity instanceof EntityPlayer && this.owner != null && this.owner instanceof EntityPlayer && !((EntityPlayer)this.owner).getBukkitEntity().canSee(((EntityPlayer)movingobjectposition.entity).getBukkitEntity())) {
+				movingobjectposition = null;
 			}
-			// PaperSpigot end
-
 			if (movingobjectposition != null) {
-				org.bukkit.craftbukkit.event.CraftEventFactory.callProjectileHitEvent(this); // Craftbukkit - Call event
+				CraftEventFactory.callProjectileHitEvent(this);
+				this.getBukkitEntity().setVelocity(this.getBukkitEntity().getVelocity().multiply(this.owner.getKnockBack().rodSpeed.value));
 				if (movingobjectposition.entity != null) {
-					if (movingobjectposition.entity.damageEntity(DamageSource.projectile(this, this.owner), 0.0F)) {
-						this.hooked = movingobjectposition.entity;
+					if (this.owner != null) {
+						if (movingobjectposition.entity instanceof EntityPlayer) {
+							EntityPlayer hit = (EntityPlayer)movingobjectposition.entity;
+							if (((CraftPlayer)this.owner.getBukkitEntity()).canSee(hit.getBukkitEntity()) && movingobjectposition.entity.damageEntity(DamageSource.projectile(this, this.owner), 0.0f)) {
+								this.hooked = movingobjectposition.entity;
+								KnockBackProfile profile = hit.getKnockBack();
+								Vector v = new Vector(this.motX, this.motY, this.motZ).normalize();
+								double velX = v.getX() / 1.6 * profile.rodH.value;
+								double velY = 0.36 * profile.rodV.value;
+								double velZ = v.getZ() / 1.6 * profile.rodH.value;
+								PlayerVelocityEvent playerVelocityEvent = new PlayerVelocityEvent(hit.getBukkitEntity(), new Vector(velX, velY, velZ));
+								Bukkit.getPluginManager().callEvent(playerVelocityEvent);
+								if (!playerVelocityEvent.isCancelled()) {
+									hit.playerConnection.sendPacket(new PacketPlayOutEntityVelocity(hit.getId(), velX, velY, velZ));
+									hit.velocityChanged = false;
+									hit.motX = velX;
+									hit.motY = velY;
+									hit.motZ = velZ;
+								}
+							}
+						} else if (movingobjectposition.entity.damageEntity(DamageSource.projectile(this, this.owner), 0.0f)) {
+							this.hooked = movingobjectposition.entity;
+						}
 					}
 				} else {
 					this.as = true;
 				}
 			}
-
 			if (!this.as) {
-				// WindSpigot start
-				motX *= WindSpigotConfig.fishingRodMultiplier;
-				motY *= WindSpigotConfig.fishingRodMultiplier;
-				motZ *= WindSpigotConfig.fishingRodMultiplier;
-				// WindSpigot end
+				double d8;
 				this.move(this.motX, this.motY, this.motZ);
 				float f1 = MathHelper.sqrt(this.motX * this.motX + this.motZ * this.motZ);
-
-				this.yaw = (float) (MathHelper.b(this.motX, this.motZ) * 180.0D / 3.1415927410125732D);
-
-				for (this.pitch = (float) (MathHelper.b(this.motY, f1) * 180.0D / 3.1415927410125732D); this.pitch
-						- this.lastPitch < -180.0F; this.lastPitch -= 360.0F) {
-					;
+				this.yaw = (float)(MathHelper.b(this.motX, this.motZ) * 180.0 / 3.1415927410125732);
+				this.pitch = (float)(MathHelper.b(this.motY, f1) * 180.0 / 3.1415927410125732);
+				while (this.pitch - this.lastPitch < -180.0f) {
+					this.lastPitch -= 360.0f;
 				}
-
-				while (this.pitch - this.lastPitch >= 180.0F) {
-					this.lastPitch += 360.0F;
+				while (this.pitch - this.lastPitch >= 180.0f) {
+					this.lastPitch += 360.0f;
 				}
-
-				while (this.yaw - this.lastYaw < -180.0F) {
-					this.lastYaw -= 360.0F;
+				while (this.yaw - this.lastYaw < -180.0f) {
+					this.lastYaw -= 360.0f;
 				}
-
-				while (this.yaw - this.lastYaw >= 180.0F) {
-					this.lastYaw += 360.0F;
+				while (this.yaw - this.lastYaw >= 180.0f) {
+					this.lastYaw += 360.0f;
 				}
-
-				this.pitch = this.lastPitch + (this.pitch - this.lastPitch) * 0.2F;
-				this.yaw = this.lastYaw + (this.yaw - this.lastYaw) * 0.2F;
-				float f2 = 0.92F;
-
+				this.pitch = this.lastPitch + (this.pitch - this.lastPitch) * 0.2f;
+				this.yaw = this.lastYaw + (this.yaw - this.lastYaw) * 0.2f;
+				float f2 = 0.92f;
 				if (this.onGround || this.positionChanged) {
-					f2 = 0.5F;
+					f2 = 0.5f;
 				}
-
-				byte b0 = 5;
-				double d7 = 0.0D;
-
-				double d8;
-
+				int b0 = 5;
+				double d7 = 0.0;
 				for (int j = 0; j < b0; ++j) {
 					AxisAlignedBB axisalignedbb1 = this.getBoundingBox();
 					double d9 = axisalignedbb1.e - axisalignedbb1.b;
-					double d10 = axisalignedbb1.b + d9 * j / b0;
-
-					d8 = axisalignedbb1.b + d9 * (j + 1) / b0;
-					AxisAlignedBB axisalignedbb2 = new AxisAlignedBB(axisalignedbb1.a, d10, axisalignedbb1.c,
-							axisalignedbb1.d, d8, axisalignedbb1.f);
-
-					if (this.world.b(axisalignedbb2, Material.WATER)) {
-						d7 += 1.0D / b0;
+					double d10 = axisalignedbb1.b + d9 * (double)j / (double)b0;
+					d8 = axisalignedbb1.b + d9 * (double)(j + 1) / (double)b0;
+					AxisAlignedBB axisalignedbb2 = new AxisAlignedBB(axisalignedbb1.a, d10, axisalignedbb1.c, axisalignedbb1.d, d8, axisalignedbb1.f);
+					if (!this.world.b(axisalignedbb2, Material.WATER)) {
+						continue;
 					}
+					d7 += 1.0 / (double)b0;
 				}
-
-				if (!this.world.isClientSide && d7 > 0.0D) {
-					WorldServer worldserver = (WorldServer) this.world;
+				if (!this.world.isClientSide && d7 > 0.0) {
+					WorldServer worldserver = (WorldServer)this.world;
 					int k = 1;
-					BlockPosition blockposition = (new BlockPosition(this)).up();
-
-					if (this.random.nextFloat() < 0.25F && this.world.isRainingAt(blockposition)) {
+					BlockPosition blockposition = new BlockPosition(this).up();
+					if (this.random.nextFloat() < 0.25f && this.world.isRainingAt(blockposition)) {
 						k = 2;
 					}
-
-					if (this.random.nextFloat() < 0.5F && !this.world.i(blockposition)) {
+					if (this.random.nextFloat() < 0.5f && !this.world.i(blockposition)) {
 						--k;
 					}
-
 					if (this.av > 0) {
 						--this.av;
 						if (this.av <= 0) {
 							this.aw = 0;
 							this.ax = 0;
 						}
-					} else {
-						float f3;
-						float f4;
-						double d11;
-						Block block;
-						float f5;
-						double d12;
-
-						if (this.ax > 0) {
-							this.ax -= k;
-							if (this.ax <= 0) {
-								this.motY -= 0.20000000298023224D;
-								this.makeSound("random.splash", 0.25F,
-										1.0F + (this.random.nextFloat() - this.random.nextFloat()) * 0.4F);
-								f3 = MathHelper.floor(this.getBoundingBox().b);
-								worldserver.a(EnumParticle.WATER_BUBBLE, this.locX, f3 + 1.0F, this.locZ,
-										(int) (1.0F + this.width * 20.0F), this.width, 0.0D, this.width,
-										0.20000000298023224D, Constants.EMPTY_ARRAY);
-								worldserver.a(EnumParticle.WATER_WAKE, this.locX, f3 + 1.0F, this.locZ,
-										(int) (1.0F + this.width * 20.0F), this.width, 0.0D, this.width,
-										0.20000000298023224D, Constants.EMPTY_ARRAY);
-								this.av = MathHelper.nextInt(this.random, 10, 30);
-							} else {
-								this.ay = (float) (this.ay + this.random.nextGaussian() * 4.0D);
-								f3 = this.ay * 0.017453292F;
-								f5 = MathHelper.sin(f3);
-								f4 = MathHelper.cos(f3);
-								d8 = this.locX + f5 * this.ax * 0.1F;
-								d12 = MathHelper.floor(this.getBoundingBox().b) + 1.0F;
-								d11 = this.locZ + f4 * this.ax * 0.1F;
-								block = worldserver.getType(new BlockPosition((int) d8, (int) d12 - 1, (int) d11))
-										.getBlock();
-								if (block == Blocks.WATER || block == Blocks.FLOWING_WATER) {
-									if (this.random.nextFloat() < 0.15F) {
-										worldserver.a(EnumParticle.WATER_BUBBLE, d8, d12 - 0.10000000149011612D, d11, 1,
-												f5, 0.1D, f4, 0.0D, Constants.EMPTY_ARRAY);
-									}
-
-									float f6 = f5 * 0.04F;
-									float f7 = f4 * 0.04F;
-
-									worldserver.a(EnumParticle.WATER_WAKE, d8, d12, d11, 0, f7, 0.01D, (-f6), 1.0D,
-											Constants.EMPTY_ARRAY);
-									worldserver.a(EnumParticle.WATER_WAKE, d8, d12, d11, 0, (-f7), 0.01D, f6, 1.0D,
-											Constants.EMPTY_ARRAY);
-								}
-							}
-						} else if (this.aw > 0) {
-							this.aw -= k;
-							f3 = 0.15F;
-							if (this.aw < 20) {
-								f3 = (float) (f3 + (20 - this.aw) * 0.05D);
-							} else if (this.aw < 40) {
-								f3 = (float) (f3 + (40 - this.aw) * 0.02D);
-							} else if (this.aw < 60) {
-								f3 = (float) (f3 + (60 - this.aw) * 0.01D);
-							}
-
-							if (this.random.nextFloat() < f3) {
-								f5 = MathHelper.a(this.random, 0.0F, 360.0F) * 0.017453292F;
-								f4 = MathHelper.a(this.random, 25.0F, 60.0F);
-								d8 = this.locX + MathHelper.sin(f5) * f4 * 0.1F;
-								d12 = MathHelper.floor(this.getBoundingBox().b) + 1.0F;
-								d11 = this.locZ + MathHelper.cos(f5) * f4 * 0.1F;
-								block = worldserver.getType(new BlockPosition((int) d8, (int) d12 - 1, (int) d11))
-										.getBlock();
-								if (block == Blocks.WATER || block == Blocks.FLOWING_WATER) {
-									worldserver.a(EnumParticle.WATER_SPLASH, d8, d12, d11, 2 + this.random.nextInt(2),
-											0.10000000149011612D, 0.0D, 0.10000000149011612D, 0.0D,
-											Constants.EMPTY_ARRAY);
-								}
-							}
-
-							if (this.aw <= 0) {
-								this.ay = MathHelper.a(this.random, 0.0F, 360.0F);
-								this.ax = MathHelper.nextInt(this.random, 20, 80);
-							}
+					} else if (this.ax > 0) {
+						this.ax -= k;
+						if (this.ax <= 0) {
+							this.motY -= 0.2f;
+							this.makeSound("random.splash", 0.25f, 1.0f + (this.random.nextFloat() - this.random.nextFloat()) * 0.4f);
+							float f3 = MathHelper.floor(this.getBoundingBox().b);
+							worldserver.a(EnumParticle.WATER_BUBBLE, this.locX, f3 + 1.0f, this.locZ, (int)(1.0f + this.width * 20.0f), this.width, 0.0, this.width, 0.2f, new int[0]);
+							worldserver.a(EnumParticle.WATER_WAKE, this.locX, f3 + 1.0f, this.locZ, (int)(1.0f + this.width * 20.0f), this.width, 0.0, this.width, 0.2f, new int[0]);
+							this.av = MathHelper.nextInt(this.random, 10, 30);
 						} else {
-							this.aw = MathHelper.nextInt(this.random, this.world.paperSpigotConfig.fishingMinTicks,
-									this.world.paperSpigotConfig.fishingMaxTicks); // PaperSpigot - Configurable fishing
-																					// tick range
-							this.aw -= EnchantmentManager.h(this.owner) * 20 * 5;
+							double d11;
+							this.ay = (float)((double)this.ay + this.random.nextGaussian() * 4.0);
+							float f3 = this.ay * ((float)Math.PI / 180);
+							float f5 = MathHelper.sin(f3);
+							float f4 = MathHelper.cos(f3);
+							d8 = this.locX + (double)(f5 * (float)this.ax * 0.1f);
+							double d12 = (float)MathHelper.floor(this.getBoundingBox().b) + 1.0f;
+							Block block = worldserver.getType(new BlockPosition((int)d8, (int)d12 - 1, (int)(d11 = this.locZ + (double)(f4 * (float)this.ax * 0.1f)))).getBlock();
+							if (block == Blocks.WATER || block == Blocks.FLOWING_WATER) {
+								if (this.random.nextFloat() < 0.15f) {
+									worldserver.a(EnumParticle.WATER_BUBBLE, d8, d12 - (double)0.1f, d11, 1, f5, 0.1, f4, 0.0, new int[0]);
+								}
+								float f6 = f5 * 0.04f;
+								float f7 = f4 * 0.04f;
+								worldserver.a(EnumParticle.WATER_WAKE, d8, d12, d11, 0, f7, 0.01, -f6, 1.0, new int[0]);
+								worldserver.a(EnumParticle.WATER_WAKE, d8, d12, d11, 0, -f7, 0.01, f6, 1.0, new int[0]);
+							}
 						}
+					} else if (this.aw > 0) {
+						this.aw -= k;
+						float f3 = 0.15f;
+						if (this.aw < 20) {
+							f3 = (float)((double)f3 + (double)(20 - this.aw) * 0.05);
+						} else if (this.aw < 40) {
+							f3 = (float)((double)f3 + (double)(40 - this.aw) * 0.02);
+						} else if (this.aw < 60) {
+							f3 = (float)((double)f3 + (double)(60 - this.aw) * 0.01);
+						}
+						if (this.random.nextFloat() < f3) {
+							double d11;
+							double d12;
+							float f5 = MathHelper.a(this.random, 0.0f, 360.0f) * ((float)Math.PI / 180);
+							float f4 = MathHelper.a(this.random, 25.0f, 60.0f);
+							d8 = this.locX + (double)(MathHelper.sin(f5) * f4 * 0.1f);
+							Block block = worldserver.getType(new BlockPosition((int)d8, (int)(d12 = (float)MathHelper.floor(this.getBoundingBox().b) + 1.0f) - 1, (int)(d11 = this.locZ + (double)(MathHelper.cos(f5) * f4 * 0.1f)))).getBlock();
+							if (block == Blocks.WATER || block == Blocks.FLOWING_WATER) {
+								worldserver.a(EnumParticle.WATER_SPLASH, d8, d12, d11, 2 + this.random.nextInt(2), 0.1f, 0.0, 0.1f, 0.0, new int[0]);
+							}
+						}
+						if (this.aw <= 0) {
+							this.ay = MathHelper.a(this.random, 0.0f, 360.0f);
+							this.ax = MathHelper.nextInt(this.random, 20, 80);
+						}
+					} else {
+						this.aw = MathHelper.nextInt(this.random, this.world.paperSpigotConfig.fishingMinTicks, this.world.paperSpigotConfig.fishingMaxTicks);
+						this.aw -= EnchantmentManager.h(this.owner) * 20 * 5;
 					}
-
 					if (this.av > 0) {
-						this.motY -= this.random.nextFloat() * this.random.nextFloat() * this.random.nextFloat() * 0.2D;
+						this.motY -= (double)(this.random.nextFloat() * this.random.nextFloat() * this.random.nextFloat()) * 0.2;
 					}
 				}
-
-				d6 = d7 * 2.0D - 1.0D;
-				this.motY += 0.03999999910593033D * d6;
-				if (d7 > 0.0D) {
-					f2 = (float) (f2 * 0.9D);
-					this.motY *= 0.8D;
+				d6 = d7 * 2.0 - 1.0;
+				this.motY += (double)0.04f * d6;
+				if (d7 > 0.0) {
+					f2 = (float)((double)f2 * 0.9);
+					this.motY *= 0.8;
 				}
-
 				this.motX *= f2;
 				this.motY *= f2;
 				this.motZ *= f2;
 				this.setPosition(this.locX, this.locY, this.locZ);
-
-				if (inPortal()) {
-					die();
-				}
 			}
 		}
 	}

@@ -390,6 +390,12 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
 		entity.velocityChanged = true;
 	}
 
+	public void setVelocityDirect(Vector vel) {
+		this.entity.motX = vel.getX();
+		this.entity.motY = vel.getY();
+		this.entity.motZ = vel.getZ();
+	}
+
 	@Override
 	public boolean isOnGround() {
 		if (entity instanceof EntityArrow) {

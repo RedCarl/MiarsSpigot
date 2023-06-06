@@ -5,7 +5,9 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 
+import gg.kazerspigot.knockback.KnockBackConfig;
 import org.bukkit.craftbukkit.entity.CraftLivingEntity;
+import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
 // CraftBukkit end
 
@@ -40,20 +42,22 @@ public class EntityPotion extends EntityProjectile {
 		this.item = itemstack;
 	}
 
+
 	@Override
 	protected float m() {
-		return 0.05F;
+		return (this.shooter.bukkitEntity.getType() == EntityType.PLAYER) ? (((EntityHuman)this.shooter).getKnockBack()).potionFallSpeed.value.floatValue() : (KnockBackConfig.getDefault()).potionFallSpeed.value.floatValue();
 	}
 
 	@Override
 	protected float j() {
-		return 0.5F;
+		return (this.shooter.bukkitEntity.getType() == EntityType.PLAYER) ? (((EntityHuman)this.shooter).getKnockBack()).potionThrowMultiplier.value.floatValue() : (KnockBackConfig.getDefault()).potionThrowMultiplier.value.floatValue();
 	}
 
 	@Override
 	protected float l() {
-		return -20.0F;
+		return (this.shooter.bukkitEntity.getType() == EntityType.PLAYER) ? (((EntityHuman)this.shooter).getKnockBack()).potionThrowOffset.value.floatValue() : (KnockBackConfig.getDefault()).potionThrowOffset.value.floatValue();
 	}
+
 
 	public void setPotionValue(int i) {
 		if (this.item == null) {

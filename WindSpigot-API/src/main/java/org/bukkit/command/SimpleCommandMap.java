@@ -1,26 +1,18 @@
 package org.bukkit.command;
 
-import static org.bukkit.util.Java15Compat.Arrays_copyOfRange;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.regex.Pattern;
-
 import org.apache.commons.lang.Validate;
 import org.bukkit.Location;
 import org.bukkit.Server;
-import org.bukkit.command.defaults.HelpCommand;
 import org.bukkit.command.defaults.PluginsCommand;
-import org.bukkit.command.defaults.ReloadCommand;
 import org.bukkit.command.defaults.VanillaCommand;
 import org.bukkit.command.defaults.VersionCommand;
 import org.bukkit.entity.Player;
 import org.bukkit.util.StringUtil;
+
+import java.util.*;
+import java.util.regex.Pattern;
+
+import static org.bukkit.util.Java15Compat.Arrays_copyOfRange;
 
 public class SimpleCommandMap implements CommandMap {
 	private static final Pattern PATTERN_ON_SPACE = Pattern.compile(" ", Pattern.LITERAL);
@@ -36,22 +28,20 @@ public class SimpleCommandMap implements CommandMap {
 		// [Nacho-0036] Add toggles for commands
 		try { // You might ask; "why?". Well, unit testing doesn't like this so I'll have to
 				// do it the ugly way. If anyone knows a better way to do this, please PR.
-			if (server.versionCommandEnabled())
+			if (server.versionCommandEnabled()) {
 				register("bukkit", new VersionCommand("version"));
-			if (server.reloadCommandEnabled())
-				register("bukkit", new ReloadCommand("reload"));
-			if (server.pluginsCommandEnabled())
+			}
+			if (server.pluginsCommandEnabled()) {
 				register("bukkit", new PluginsCommand("plugins"));
+			}
 		} catch (Exception e) {
 			register("bukkit", new VersionCommand("version"));
-			register("bukkit", new ReloadCommand("reload"));
 			register("bukkit", new PluginsCommand("plugins"));
 		}
-		register("bukkit", new co.aikar.timings.TimingsCommand("timings")); // Spigot
 	}
 
 	public void setFallbackCommands() {
-		register("bukkit", new HelpCommand());
+		// register("bukkit", new HelpCommand());
 	}
 
 	/**

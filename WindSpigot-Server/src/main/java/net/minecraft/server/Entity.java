@@ -39,7 +39,6 @@ import com.eatthepath.uuid.FastUUID;
 
 import co.aikar.timings.SpigotTimings; // Spigot
 import co.aikar.timings.Timing; // Spigot
-import dev.cobblesword.nachospigot.knockback.KnockbackProfile;
 import ga.windpvp.windspigot.WindSpigot;
 import ga.windpvp.windspigot.cache.Constants;
 import ga.windpvp.windspigot.config.WindSpigotConfig;
@@ -1015,7 +1014,7 @@ public abstract class Entity implements ICommandListener {
 	}
 
 	public void b(boolean flag) {
-		this.datawatcher.watch(4, Byte.valueOf((byte) (flag ? 1 : 0)));
+		this.datawatcher.watch(4, (byte) (flag ? 1 : 0));
 	}
 
 	protected boolean s_() {
@@ -1136,7 +1135,7 @@ public abstract class Entity implements ICommandListener {
 		if (block.b() != -1) {
 			this.world.addParticle(EnumParticle.BLOCK_CRACK, this.locX + (this.random.nextFloat() - 0.5D) * this.width,
 					this.getBoundingBox().b + 0.1D, this.locZ + (this.random.nextFloat() - 0.5D) * this.width,
-					-this.motX * 4.0D, 1.5D, -this.motZ * 4.0D, new int[] { Block.getCombinedId(iblockdata) });
+					-this.motX * 4.0D, 1.5D, -this.motZ * 4.0D, Block.getCombinedId(iblockdata));
 		}
 
 	}
@@ -1156,7 +1155,7 @@ public abstract class Entity implements ICommandListener {
 			float f1 = blockposition.getY() + 1 - f;
 			boolean flag = d0 < f1;
 
-			return !flag && this instanceof EntityHuman ? false : flag;
+			return (flag || !(this instanceof EntityHuman)) && flag;
 		} else {
 			return false;
 		}
@@ -1452,8 +1451,8 @@ public abstract class Entity implements ICommandListener {
 
 	public void e(NBTTagCompound nbttagcompound) {
 		try {
-			nbttagcompound.set("Pos", this.a(new double[] { this.locX, this.locY, this.locZ }));
-			nbttagcompound.set("Motion", this.a(new double[] { this.motX, this.motY, this.motZ }));
+			nbttagcompound.set("Pos", this.a(this.locX, this.locY, this.locZ));
+			nbttagcompound.set("Motion", this.a(this.motX, this.motY, this.motZ));
 
 			// CraftBukkit start - Checking for NaN pitch/yaw and resetting to zero
 			// TODO: make sure this is the best way to address this.
@@ -1466,7 +1465,7 @@ public abstract class Entity implements ICommandListener {
 			}
 			// CraftBukkit end
 
-			nbttagcompound.set("Rotation", this.a(new float[] { this.yaw, this.pitch }));
+			nbttagcompound.set("Rotation", this.a(this.yaw, this.pitch));
 			nbttagcompound.setFloat("FallDistance", this.fallDistance);
 			nbttagcompound.setShort("Fire", (short) this.fireTicks);
 			nbttagcompound.setShort("Air", (short) this.getAirTicks());
@@ -1749,7 +1748,6 @@ public abstract class Entity implements ICommandListener {
 				this.as += this.vehicle.yaw - this.vehicle.lastYaw;
 
 				for (this.ar += this.vehicle.pitch - this.vehicle.lastPitch; this.as >= 180.0D; this.as -= 360.0D) {
-					;
 				}
 
 				while (this.as < -180.0D) {
@@ -1996,10 +1994,6 @@ public abstract class Entity implements ICommandListener {
 		this.extraKnockback = flag;
 	}
 
-	public boolean isExtraKnockback() {
-		return this.extraKnockback;
-	}
-
 	public void setSprinting(boolean flag) {
 		this.b(3, flag);
 	}
@@ -2024,9 +2018,9 @@ public abstract class Entity implements ICommandListener {
 		byte b0 = this.datawatcher.getByte(0);
 
 		if (flag) {
-			this.datawatcher.watch(0, Byte.valueOf((byte) (b0 | 1 << i)));
+			this.datawatcher.watch(0, (byte) (b0 | 1 << i));
 		} else {
-			this.datawatcher.watch(0, Byte.valueOf((byte) (b0 & ~(1 << i))));
+			this.datawatcher.watch(0, (byte) (b0 & ~(1 << i)));
 		}
 
 	}
@@ -2036,7 +2030,7 @@ public abstract class Entity implements ICommandListener {
 	}
 
 	public void setAirTicks(int i) {
-		this.datawatcher.watch(1, Short.valueOf((short) i));
+		this.datawatcher.watch(1, (short) i);
 	}
 
 	public void onLightningStrike(EntityLightning entitylightning) {
@@ -2204,10 +2198,10 @@ public abstract class Entity implements ICommandListener {
 
 	@Override
 	public String toString() {
-		return String.format("%s[\'%s\'/%d, l=\'%s\', x=%.2f, y=%.2f, z=%.2f]",
-				new Object[] { this.getClass().getSimpleName(), this.getName(), Integer.valueOf(this.id),
-						this.world == null ? "~NULL~" : this.world.getWorldData().getName(), Double.valueOf(this.locX),
-						Double.valueOf(this.locY), Double.valueOf(this.locZ) });
+		return String.format("%s['%s'/%d, l='%s', x=%.2f, y=%.2f, z=%.2f]",
+				this.getClass().getSimpleName(), this.getName(), this.id,
+				this.world == null ? "~NULL~" : this.world.getWorldData().getName(), this.locX,
+				this.locY, this.locZ);
 	}
 
 	public boolean isInvulnerable(DamageSource damagesource) {
@@ -2370,7 +2364,7 @@ public abstract class Entity implements ICommandListener {
 				return this.a();
 			}
 		});
-		crashreportsystemdetails.a("Entity ID", Integer.valueOf(this.id));
+		crashreportsystemdetails.a("Entity ID", this.id);
 		crashreportsystemdetails.a("Entity Name", new Callable() {
 			public String a() throws Exception {
 				return Entity.this.getName();
@@ -2381,13 +2375,13 @@ public abstract class Entity implements ICommandListener {
 				return this.a();
 			}
 		});
-		crashreportsystemdetails.a("Entity\'s Exact location", String.format("%.2f, %.2f, %.2f",
-				new Object[] { Double.valueOf(this.locX), Double.valueOf(this.locY), Double.valueOf(this.locZ) }));
-		crashreportsystemdetails.a("Entity\'s Block location", CrashReportSystemDetails.a(MathHelper.floor(this.locX),
+		crashreportsystemdetails.a("Entity's Exact location", String.format("%.2f, %.2f, %.2f",
+				this.locX, this.locY, this.locZ));
+		crashreportsystemdetails.a("Entity's Block location", CrashReportSystemDetails.a(MathHelper.floor(this.locX),
 				MathHelper.floor(this.locY), MathHelper.floor(this.locZ)));
-		crashreportsystemdetails.a("Entity\'s Momentum", String.format("%.2f, %.2f, %.2f",
-				new Object[] { Double.valueOf(this.motX), Double.valueOf(this.motY), Double.valueOf(this.motZ) }));
-		crashreportsystemdetails.a("Entity\'s Rider", new Callable() {
+		crashreportsystemdetails.a("Entity's Momentum", String.format("%.2f, %.2f, %.2f",
+				this.motX, this.motY, this.motZ));
+		crashreportsystemdetails.a("Entity's Rider", new Callable() {
 			public String a() throws Exception {
 				return Entity.this.passenger.toString();
 			}
@@ -2397,7 +2391,7 @@ public abstract class Entity implements ICommandListener {
 				return this.a();
 			}
 		});
-		crashreportsystemdetails.a("Entity\'s Vehicle", new Callable() {
+		crashreportsystemdetails.a("Entity's Vehicle", new Callable() {
 			public String a() throws Exception {
 				return Entity.this.vehicle.toString();
 			}
@@ -2444,7 +2438,7 @@ public abstract class Entity implements ICommandListener {
 	}
 
 	public void setCustomNameVisible(boolean flag) {
-		this.datawatcher.watch(3, Byte.valueOf((byte) (flag ? 1 : 0)));
+		this.datawatcher.watch(3, (byte) (flag ? 1 : 0));
 	}
 
 	public boolean getCustomNameVisible() {
@@ -2592,19 +2586,9 @@ public abstract class Entity implements ICommandListener {
 
 	protected void a(EntityLiving entityliving, Entity entity) {
 		if (entity instanceof EntityLiving) {
-			EnchantmentManager.a((EntityLiving) entity, (Entity) entityliving);
+			EnchantmentManager.a((EntityLiving) entity, entityliving);
 		}
 
 		EnchantmentManager.b(entityliving, entity);
-	}
-
-	private KnockbackProfile knockbackProfile;
-
-	public KnockbackProfile getKnockbackProfile() {
-		return knockbackProfile;
-	}
-
-	public void setKnockbackProfile(KnockbackProfile profile) {
-		this.knockbackProfile = profile;
 	}
 }

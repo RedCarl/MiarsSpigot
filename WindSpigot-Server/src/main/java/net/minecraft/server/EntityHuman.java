@@ -1,29 +1,22 @@
 package net.minecraft.server;
 
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.List;
-import java.util.UUID;
-
+import com.google.common.base.Charsets;
+import com.google.common.collect.Lists;
+import com.mojang.authlib.GameProfile;
+import gg.kazerspigot.knockback.KnockBackConfig;
+import gg.kazerspigot.knockback.KnockBackProfile;
+import org.bukkit.Bukkit;
 import org.bukkit.craftbukkit.entity.CraftHumanEntity;
 import org.bukkit.craftbukkit.entity.CraftItem;
 import org.bukkit.craftbukkit.inventory.CraftItemStack;
 import org.bukkit.entity.Player;
 import org.bukkit.event.entity.EntityCombustByEntityEvent;
-import org.bukkit.event.player.PlayerBedEnterEvent;
-import org.bukkit.event.player.PlayerBedLeaveEvent;
-import org.bukkit.event.player.PlayerDropItemEvent;
-import org.bukkit.event.player.PlayerItemConsumeEvent;
-import org.bukkit.event.player.PlayerVelocityEvent;
-import org.bukkit.util.Vector;
-// CraftBukkit end
+import org.bukkit.event.player.*;
 
-import com.google.common.base.Charsets;
-import com.google.common.collect.Lists;
-import com.mojang.authlib.GameProfile;
-
-import dev.cobblesword.nachospigot.knockback.KnockbackProfile;
-import ga.windpvp.windspigot.knockback.KnockbackConfig;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
+import java.util.UUID;
 
 public abstract class EntityHuman extends EntityLiving {
 
@@ -70,6 +63,33 @@ public abstract class EntityHuman extends EntityLiving {
 	public String spawnWorld = "";
 	public int oldLevel = -1;
 
+	// Kazer Spigot
+	private KnockBackProfile knockBackProfile;
+
+	public boolean shouldDealSprintKnockBack;
+
+	public boolean shouldDealNoResetKnockBack;
+
+	public boolean dealtNoResetKnockBack;
+
+	public boolean pinDaoKnockBack;
+
+	public boolean shouldDealComboKnockBack;
+
+	public boolean shouldDealYLimitKnockBack;
+
+	public boolean shouldDamageSlowDown;
+
+	public boolean shouldDealNoSprintSpeed;
+
+	public boolean dealNoSprintSpeed;
+
+	public int slowDown;
+
+	public long lastDealSprintKnockBack;
+
+	public boolean shouldDealStopComboKnockBack;
+
 	@Override
 	public CraftHumanEntity getBukkitEntity() {
 		return (CraftHumanEntity) super.getBukkitEntity();
@@ -78,14 +98,35 @@ public abstract class EntityHuman extends EntityLiving {
 
 	public EntityHuman(World world, GameProfile gameprofile) {
 		super(world);
+
+		// Kazer
+		this.knockBackProfile = KnockBackConfig.getInstance().getDefault();
+		this.shouldDealSprintKnockBack = false;
+		this.shouldDealNoResetKnockBack = false;
+		this.dealtNoResetKnockBack = false;
+		this.pinDaoKnockBack = true;
+		this.shouldDealComboKnockBack = false;
+		this.shouldDealYLimitKnockBack = false;
+		this.shouldDamageSlowDown = false;
+		this.shouldDealNoSprintSpeed = false;
+		this.dealNoSprintSpeed = false;
+		this.slowDown = 0;
+		this.lastDealSprintKnockBack = System.currentTimeMillis();
+		this.shouldDealStopComboKnockBack = false;
+		// Kazer
+
 		this.uniqueID = a(gameprofile);
 		this.bH = gameprofile;
 		this.defaultContainer = new ContainerPlayer(this.inventory, !world.isClientSide, this);
 		this.activeContainer = this.defaultContainer;
 		BlockPosition blockposition = world.getSpawn();
 
-		this.setPositionRotation(blockposition.getX() + 0.5D, blockposition.getY() + 1, blockposition.getZ() + 0.5D,
-				0.0F, 0.0F);
+		this.setPositionRotation(
+				blockposition.getX() + 0.5D,
+				blockposition.getY() + 1,
+				blockposition.getZ() + 0.5D,
+				0.0F, 0.0F
+		);
 		this.aV = 180.0F;
 		this.maxFireTicks = 20;
 	}
@@ -366,7 +407,7 @@ public abstract class EntityHuman extends EntityLiving {
 	@Override
 	public void ak() {
 		if (!this.world.isClientSide && this.isSneaking()) {
-			this.mount((Entity) null);
+			this.mount(null);
 			this.setSneaking(false);
 		} else {
 			double d0 = this.locX;
@@ -1010,173 +1051,299 @@ public abstract class EntityHuman extends EntityLiving {
 	}
 
 	public void ca() {
-		this.inventory.setItem(this.inventory.itemInHandIndex, (ItemStack) null);
+		this.inventory.setItem(this.inventory.itemInHandIndex, null);
 	}
 
 	@Override
 	public double am() {
 		return -0.35D;
 	}
+	public KnockBackProfile getKnockBack() {
+		return this.knockBackProfile;
+	}
+
+	public void setKnockBack(KnockBackProfile knockBackProfile) {
+		this.knockBackProfile = knockBackProfile;
+	}
 
 	public void attack(Entity entity) {
-		if (entity.aD()) {
-			if (!entity.l(this)) {
-				float f = (float) this.getAttributeInstance(GenericAttributes.ATTACK_DAMAGE).getValue();
-				float f1 = EnchantmentManager.a(this.bA(), EnumMonsterType.UNDEFINED);
-
-				if (entity instanceof EntityLiving) {
-					f1 = EnchantmentManager.a(this.bA(), ((EntityLiving) entity).getMonsterType());
+		if (entity.aD() &&
+				!entity.l(this)) {
+			float f = (float)getAttributeInstance(GenericAttributes.ATTACK_DAMAGE).getValue();
+			byte b0 = (byte)(this.knockBackProfile.sprint.value ? 0 : 1);
+			float f1 = 0.0F;
+			if (entity instanceof EntityLiving) {
+				f1 = EnchantmentManager.a(bA(), ((EntityLiving)entity).getMonsterType());
+			} else {
+				f1 = EnchantmentManager.a(bA(), EnumMonsterType.UNDEFINED);
+			}
+			EnchantmentManager.a(this);
+			if (!this.shouldDealSprintKnockBack || this.knockBackProfile.sprint.value) {
+				;
+			}
+			if (f > 0.0F || f1 > 0.0F) {
+				boolean flag = (!this.world.paperSpigotConfig.disablePlayerCrits && this.fallDistance > 0.0F && !this.onGround && !k_() && !V() && !hasEffect(MobEffectList.BLINDNESS) && this.vehicle == null && entity instanceof EntityLiving);
+				boolean critical = false;
+				if (flag && f > 0.0F) {
+					f *= 1.5F;
+					critical = true;
 				}
-
-				int i = EnchantmentManager.a(this);
-
-				if (this.isExtraKnockback()) {
-					++i;
-				}
-
-				if (f > 0.0F || f1 > 0.0F) {
-					boolean flag = !world.paperSpigotConfig.disablePlayerCrits && this.fallDistance > 0.0F
-							&& !this.onGround && !this.k_() && !this.V() && !this.hasEffect(MobEffectList.BLINDNESS)
-							&& this.vehicle == null && entity instanceof EntityLiving; // PaperSpigot
-
-					if (flag && f > 0.0F) {
-						f *= 1.5F;
-					}
-
-					f += f1;
-					boolean flag1 = false;
-					int j = EnchantmentManager.getFireAspectEnchantmentLevel(this);
-
-					if (entity instanceof EntityLiving && j > 0 && !entity.isBurning()) {
-						// CraftBukkit start - Call a combust event when somebody hits with a fire
-						// enchanted item
-						EntityCombustByEntityEvent combustEvent = new EntityCombustByEntityEvent(this.getBukkitEntity(),
-								entity.getBukkitEntity(), 1);
-						org.bukkit.Bukkit.getPluginManager().callEvent(combustEvent);
-
-						if (!combustEvent.isCancelled()) {
-							flag1 = true;
-							entity.setOnFire(combustEvent.getDuration());
-						}
-						// CraftBukkit end
-					}
-
-					double d0 = entity.motX;
-					double d1 = entity.motY;
-					double d2 = entity.motZ;
-					boolean flag2 = entity.damageEntity(DamageSource.playerAttack(this), f);
-
-					if (flag2) {
-						if (i > 0) {
-							KnockbackProfile profile = (entity.getKnockbackProfile() == null)
-									? KnockbackConfig.getCurrentKb()
-									: entity.getKnockbackProfile();
-							
-							// WindSpigot start - more configurable knockback
-							if (this.isExtraKnockback()) {
-								entity.g(
-										(-MathHelper.sin((float) (this.yaw * Math.PI / 180.0D)) * i
-												* profile.getWTapExtraHorizontal()),
-										profile.getWTapExtraVertical(), (MathHelper.cos((float) (this.yaw * Math.PI / 180.0D))
-												* i * profile.getWTapExtraHorizontal()));
-							} else {
-								entity.g(
-										(-MathHelper.sin((float) (this.yaw * Math.PI / 180.0D)) * i
-												* profile.getExtraHorizontal()),
-										profile.getExtraVertical(), (MathHelper.cos((float) (this.yaw * Math.PI / 180.0D))
-												* i * profile.getExtraHorizontal()));
-							}
-							// WindSpigot end
-							this.motX *= 0.6D;
-							this.motZ *= 0.6D;
-							if (profile.isStopSprint()) {
-								this.setExtraKnockback(false); // Nacho - Prevent desync player sprinting
-							}
-						}
-
-						if (entity instanceof EntityPlayer && entity.velocityChanged) {
-							Player player = (Player) entity.getBukkitEntity();
-							final Vector velocity = new Vector(entity.motX, entity.motY, entity.motZ);
-							PlayerVelocityEvent event = new PlayerVelocityEvent(player, velocity);
-							world.getServer().getPluginManager().callEvent(event);
-
-							if (!event.isCancelled()) {
-								if (!velocity.equals(event.getVelocity())) {
-									player.setVelocity(event.getVelocity());
-								}
-								((EntityPlayer) entity).playerConnection
-										.sendPacket(new PacketPlayOutEntityVelocity(entity));
-								entity.velocityChanged = false;
-								entity.motX = d0;
-								entity.motY = d1;
-								entity.motZ = d2;
-							}
-							// CraftBukkit end
-						}
-
-						if (flag) {
-							this.b(entity);
-						}
-
-						if (f1 > 0.0F) {
-							this.c(entity);
-						}
-
-						if (f >= 18.0F) {
-							this.b(AchievementList.F);
-						}
-
-						this.p(entity);
-						if (entity instanceof EntityLiving) {
-							EnchantmentManager.a((EntityLiving) entity, this);
-						}
-
-						EnchantmentManager.b(this, entity);
-						ItemStack itemstack = this.bZ();
-						Object object = entity;
-
-						if (entity instanceof EntityComplexPart) {
-							IComplex icomplex = ((EntityComplexPart) entity).owner;
-
-							if (icomplex instanceof EntityLiving) {
-								object = icomplex;
-							}
-						}
-
-						if (itemstack != null && object instanceof EntityLiving) {
-							itemstack.a((EntityLiving) object, this);
-							// CraftBukkit - bypass infinite items; <= 0 -> == 0
-							if (itemstack.count == 0) {
-								this.ca();
-							}
-						}
-
-						if (entity instanceof EntityLiving) {
-							this.a(StatisticList.w, Math.round(f * 10.0F));
-							if (j > 0) {
-								// CraftBukkit start - Call a combust event when somebody hits with a fire
-								// enchanted item
-								EntityCombustByEntityEvent combustEvent = new EntityCombustByEntityEvent(
-										this.getBukkitEntity(), entity.getBukkitEntity(), j * 4);
-								org.bukkit.Bukkit.getPluginManager().callEvent(combustEvent);
-
-								if (!combustEvent.isCancelled()) {
-									entity.setOnFire(combustEvent.getDuration());
-								}
-								// CraftBukkit end
-							}
-						}
-
-						this.applyExhaustion(world.spigotConfig.combatExhaustion); // Spigot - Change to use
-																					// configurable value
-					} else if (flag1) {
-						entity.extinguish();
+				f += f1;
+				boolean flag1 = false;
+				int j = EnchantmentManager.getFireAspectEnchantmentLevel(this);
+				if (entity instanceof EntityLiving && j > 0 && !entity.isBurning()) {
+					EntityCombustByEntityEvent combustEvent = new EntityCombustByEntityEvent(getBukkitEntity(), entity.getBukkitEntity(), 1);
+					Bukkit.getPluginManager().callEvent(combustEvent);
+					if (!combustEvent.isCancelled()) {
+						flag1 = true;
+						entity.setOnFire(combustEvent.getDuration());
 					}
 				}
-
+				double victimMotX = entity.motX;
+				double victimMotY = entity.motY;
+				double victimMotZ = entity.motZ;
+				boolean flag2 = entity.damageEntity(DamageSource.playerAttack(this), f);
+				if (flag2) {
+					if (critical) {
+//						PlayerCriticalEvent criticalEvent = new PlayerCriticalEvent(Bukkit.getPlayer(this.uniqueID), (Entity)entity.getBukkitEntity());
+//						Bukkit.getPluginManager().callEvent((Event)criticalEvent);
+					}
+					KnockBackProfile profile = this.knockBackProfile;
+					entity.g(
+							-MathHelper.sin(this.yaw * 3.1415927F / 180.0F) * (profile.sprint.value ? (this.shouldDealSprintKnockBack ? profile.sprintExtraH.value : profile.extraH.value) : profile.extraH.value), profile.sprint.value ? (this.shouldDealSprintKnockBack ? profile.sprintExtraV.value : profile.extraV.value) : profile.extraV.value,
+							MathHelper.cos(this.yaw * 3.1415927F / 180.0F) * (profile.sprint.value ? (this.shouldDealSprintKnockBack ? profile.sprintExtraH.value : profile.extraH.value) : profile.extraH.value));
+					boolean wtapped = false;
+					if (this.shouldDealSprintKnockBack) {
+						this.shouldDealSprintKnockBack = false;
+						this.lastDealSprintKnockBack = System.currentTimeMillis();
+						wtapped = true;
+					}
+					this.motX *= profile.slowDown.value;
+					this.motZ *= profile.slowDown.value;
+					setSprinting(false);
+					if (entity instanceof EntityPlayer && entity.velocityChanged) {
+						EntityPlayer victim = (EntityPlayer)entity;
+						if (victim.shouldDealComboKnockBack && wtapped) {
+							// Bukkit.getPluginManager().callEvent((Event)new PlayerWtapEvent(Bukkit.getPlayer(this.uniqueID), (Entity)entity.getBukkitEntity()));
+						}
+						victim.shouldDealComboKnockBack = true;
+						this.shouldDealComboKnockBack = false;
+						PlayerVelocityEvent event = new PlayerVelocityEvent(victim.getBukkitEntity(), victim.getBukkitEntity().getVelocity());
+						Bukkit.getPluginManager().callEvent(event);
+						if (!event.isCancelled()) {
+							victim.bukkitEntity.setVelocityDirect(event.getVelocity());
+							victim.playerConnection.sendPacket(new PacketPlayOutEntityVelocity(victim));
+							victim.velocityChanged = false;
+							victim.motX = victimMotX;
+							victim.motY = victimMotY;
+							victim.motZ = victimMotZ;
+							victim.fallDistance = 0.0F;
+						}
+					}
+					if (flag) {
+						b(entity);
+					}
+					if (f1 > 0.0F) {
+						c(entity);
+					}
+					if (f >= 18.0F) {
+						b(AchievementList.F);
+					}
+					p(entity);
+					if (entity instanceof EntityLiving) {
+						EnchantmentManager.a((EntityLiving)entity, this);
+					}
+					EnchantmentManager.b(this, entity);
+					ItemStack itemstack = bZ();
+					Object object = entity;
+					if (entity instanceof EntityComplexPart) {
+						IComplex icomplex = ((EntityComplexPart)entity).owner;
+						if (icomplex instanceof EntityLiving) {
+							object = icomplex;
+						}
+					}
+					if (itemstack != null && object instanceof EntityLiving) {
+						itemstack.a((EntityLiving)object, this);
+						if (itemstack.count == 0) {
+							ca();
+						}
+					}
+					if (entity instanceof EntityLiving) {
+						a(StatisticList.w, Math.round(f * 10.0F));
+						if (j > 0) {
+							EntityCombustByEntityEvent combustEvent = new EntityCombustByEntityEvent(getBukkitEntity(), entity.getBukkitEntity(), j * 4);
+							Bukkit.getPluginManager().callEvent(combustEvent);
+							if (!combustEvent.isCancelled()) {
+								entity.setOnFire(combustEvent.getDuration());
+							}
+						}
+					}
+					applyExhaustion(this.world.spigotConfig.combatExhaustion);
+				} else if (flag1) {
+					entity.extinguish();
+				}
 			}
 		}
 	}
+//	public void attack(Entity entity) {
+//		if (entity.aD()) {
+//			if (!entity.l(this)) {
+//				float f = (float) this.getAttributeInstance(GenericAttributes.ATTACK_DAMAGE).getValue();
+//				float f1 = EnchantmentManager.a(this.bA(), EnumMonsterType.UNDEFINED);
+//
+//				if (entity instanceof EntityLiving) {
+//					f1 = EnchantmentManager.a(this.bA(), ((EntityLiving) entity).getMonsterType());
+//				}
+//
+//				int i = EnchantmentManager.a(this);
+//
+//				if (this.isExtraKnockback()) {
+//					++i;
+//				}
+//
+//				if (f > 0.0F || f1 > 0.0F) {
+//					boolean flag = !world.paperSpigotConfig.disablePlayerCrits && this.fallDistance > 0.0F
+//							&& !this.onGround && !this.k_() && !this.V() && !this.hasEffect(MobEffectList.BLINDNESS)
+//							&& this.vehicle == null && entity instanceof EntityLiving; // PaperSpigot
+//
+//					if (flag && f > 0.0F) {
+//						f *= 1.5F;
+//					}
+//
+//					f += f1;
+//					boolean flag1 = false;
+//					int j = EnchantmentManager.getFireAspectEnchantmentLevel(this);
+//
+//					if (entity instanceof EntityLiving && j > 0 && !entity.isBurning()) {
+//						// CraftBukkit start - Call a combust event when somebody hits with a fire
+//						// enchanted item
+//						EntityCombustByEntityEvent combustEvent = new EntityCombustByEntityEvent(this.getBukkitEntity(),
+//								entity.getBukkitEntity(), 1);
+//						org.bukkit.Bukkit.getPluginManager().callEvent(combustEvent);
+//
+//						if (!combustEvent.isCancelled()) {
+//							flag1 = true;
+//							entity.setOnFire(combustEvent.getDuration());
+//						}
+//						// CraftBukkit end
+//					}
+//
+//					double d0 = entity.motX;
+//					double d1 = entity.motY;
+//					double d2 = entity.motZ;
+//					boolean flag2 = entity.damageEntity(DamageSource.playerAttack(this), f);
+//
+//					if (flag2) {
+//						if (i > 0) {
+//							KnockbackProfile profile = (entity.getKnockbackProfile() == null)
+//									? KnockbackConfig.getCurrentKb()
+//									: entity.getKnockbackProfile();
+//
+//							// WindSpigot start - more configurable knockback
+//							if (this.isExtraKnockback()) {
+//								entity.g(
+//										(-MathHelper.sin((float) (this.yaw * Math.PI / 180.0D)) * i
+//												* profile.getWTapExtraHorizontal()),
+//										profile.getWTapExtraVertical(), (MathHelper.cos((float) (this.yaw * Math.PI / 180.0D))
+//												* i * profile.getWTapExtraHorizontal()));
+//							} else {
+//								entity.g(
+//										(-MathHelper.sin((float) (this.yaw * Math.PI / 180.0D)) * i
+//												* profile.getExtraHorizontal()),
+//										profile.getExtraVertical(), (MathHelper.cos((float) (this.yaw * Math.PI / 180.0D))
+//												* i * profile.getExtraHorizontal()));
+//							}
+//							// WindSpigot end
+//							this.motX *= 0.6D;
+//							this.motZ *= 0.6D;
+//							if (profile.isStopSprint()) {
+//								this.setExtraKnockback(false); // Nacho - Prevent desync player sprinting
+//							}
+//						}
+//
+//						if (entity instanceof EntityPlayer && entity.velocityChanged) {
+//							Player player = (Player) entity.getBukkitEntity();
+//							final Vector velocity = new Vector(entity.motX, entity.motY, entity.motZ);
+//							PlayerVelocityEvent event = new PlayerVelocityEvent(player, velocity);
+//							world.getServer().getPluginManager().callEvent(event);
+//
+//							if (!event.isCancelled()) {
+//								if (!velocity.equals(event.getVelocity())) {
+//									player.setVelocity(event.getVelocity());
+//								}
+//								((EntityPlayer) entity).playerConnection
+//										.sendPacket(new PacketPlayOutEntityVelocity(entity));
+//								entity.velocityChanged = false;
+//								entity.motX = d0;
+//								entity.motY = d1;
+//								entity.motZ = d2;
+//							}
+//							// CraftBukkit end
+//						}
+//
+//						if (flag) {
+//							this.b(entity);
+//						}
+//
+//						if (f1 > 0.0F) {
+//							this.c(entity);
+//						}
+//
+//						if (f >= 18.0F) {
+//							this.b(AchievementList.F);
+//						}
+//
+//						this.p(entity);
+//						if (entity instanceof EntityLiving) {
+//							EnchantmentManager.a((EntityLiving) entity, this);
+//						}
+//
+//						EnchantmentManager.b(this, entity);
+//						ItemStack itemstack = this.bZ();
+//						Object object = entity;
+//
+//						if (entity instanceof EntityComplexPart) {
+//							IComplex icomplex = ((EntityComplexPart) entity).owner;
+//
+//							if (icomplex instanceof EntityLiving) {
+//								object = icomplex;
+//							}
+//						}
+//
+//						if (itemstack != null && object instanceof EntityLiving) {
+//							itemstack.a((EntityLiving) object, this);
+//							// CraftBukkit - bypass infinite items; <= 0 -> == 0
+//							if (itemstack.count == 0) {
+//								this.ca();
+//							}
+//						}
+//
+//						if (entity instanceof EntityLiving) {
+//							this.a(StatisticList.w, Math.round(f * 10.0F));
+//							if (j > 0) {
+//								// CraftBukkit start - Call a combust event when somebody hits with a fire
+//								// enchanted item
+//								EntityCombustByEntityEvent combustEvent = new EntityCombustByEntityEvent(
+//										this.getBukkitEntity(), entity.getBukkitEntity(), j * 4);
+//								org.bukkit.Bukkit.getPluginManager().callEvent(combustEvent);
+//
+//								if (!combustEvent.isCancelled()) {
+//									entity.setOnFire(combustEvent.getDuration());
+//								}
+//								// CraftBukkit end
+//							}
+//						}
+//
+//						this.applyExhaustion(world.spigotConfig.combatExhaustion); // Spigot - Change to use
+//																					// configurable value
+//					} else if (flag1) {
+//						entity.extinguish();
+//					}
+//				}
+//
+//			}
+//		}
+//	}
 
 	public void b(Entity entity) {
 	}
@@ -1234,7 +1401,7 @@ public abstract class EntityHuman extends EntityLiving {
 		}
 
 		if (this.au()) {
-			this.mount((Entity) null);
+			this.mount(null);
 		}
 
 		// CraftBukkit start - fire PlayerBedEnterEvent

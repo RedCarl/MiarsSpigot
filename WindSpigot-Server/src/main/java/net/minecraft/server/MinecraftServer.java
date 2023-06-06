@@ -1,35 +1,6 @@
 package net.minecraft.server;
 
-import java.awt.GraphicsEnvironment;
-import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
-import java.net.Proxy;
-import java.security.KeyPair;
-import java.text.SimpleDateFormat;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
-import java.util.Queue;
-import java.util.Random;
-import java.util.UUID;
-import java.util.concurrent.Callable;
-import java.util.concurrent.Executors;
-import java.util.concurrent.FutureTask;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.LockSupport;
-import java.util.function.BooleanSupplier;
-import java.util.function.Function;
-
-import javax.imageio.ImageIO;
-
-import ga.windpvp.windspigot.random.FastRandom;
-import org.apache.commons.lang3.Validate;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.bukkit.craftbukkit.Main;
-
+import co.aikar.timings.SpigotTimings;
 import com.google.common.base.Charsets;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Futures;
@@ -39,31 +10,44 @@ import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.GameProfileRepository;
 import com.mojang.authlib.minecraft.MinecraftSessionService;
 import com.mojang.authlib.yggdrasil.YggdrasilAuthenticationService;
-
-import co.aikar.timings.SpigotTimings; // Spigot
+import ga.windpvp.windspigot.WindSpigot;
+import ga.windpvp.windspigot.config.WindSpigotConfig;
+import ga.windpvp.windspigot.random.FastRandom;
+import ga.windpvp.windspigot.tickloop.ReentrantIAsyncHandler;
+import ga.windpvp.windspigot.tickloop.TasksPerTick;
+import ga.windpvp.windspigot.world.WorldTickManager;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.base64.Base64;
 import io.netty.util.ResourceLeakDetector;
-
-// CraftBukkit start
 import jline.console.ConsoleReader;
 import joptsimple.OptionSet;
-// CraftBukkit end
-
-// NachoSpigot start
-import xyz.sculas.nacho.async.AsyncExplosions;
-// NachoSpigot end
-
-// WindSpigot start
 import net.openhft.affinity.AffinityLock;
-import ga.windpvp.windspigot.WindSpigot;
-import ga.windpvp.windspigot.config.WindSpigotConfig;
-import ga.windpvp.windspigot.statistics.StatisticsClient;
-import ga.windpvp.windspigot.tickloop.ReentrantIAsyncHandler;
-import ga.windpvp.windspigot.tickloop.TasksPerTick;
-import ga.windpvp.windspigot.world.WorldTickManager;
+import org.apache.commons.lang3.Validate;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.bukkit.craftbukkit.Main;
+import xyz.sculas.nacho.async.AsyncExplosions;
+
+import javax.imageio.ImageIO;
+import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+import java.net.Proxy;
+import java.security.KeyPair;
+import java.text.SimpleDateFormat;
+import java.util.List;
+import java.util.Queue;
+import java.util.*;
+import java.util.concurrent.Callable;
+import java.util.concurrent.Executors;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.LockSupport;
+import java.util.function.BooleanSupplier;
+import java.util.function.Function;
 // WindSpigot end
 
 public abstract class MinecraftServer extends ReentrantIAsyncHandler<TasksPerTick> implements ICommandListener, IAsyncTaskHandler, IMojangStatistics {
@@ -702,7 +686,9 @@ public abstract class MinecraftServer extends ReentrantIAsyncHandler<TasksPerTic
                     if (i > 5000L && this.nextTickTime - this.lastOverloadWarning >= 30000L && ticks > 500) { // CraftBukkit // WindSpigot - prevent display of overload on first 500 ticks
                         long j = i / 50L;
                         if (this.server.getWarnOnOverload()) // CraftBukkit
-                            MinecraftServer.LOGGER.warn("Can't keep up! Is the server overloaded? Running {}ms or {} ticks behind", i, j);
+						{
+							MinecraftServer.LOGGER.warn("Can't keep up! Is the server overloaded? Running {}ms or {} ticks behind", i, j);
+						}
                         this.nextTickTime += j * 50L;
                         this.lastOverloadWarning = this.nextTickTime;
                     }
@@ -770,28 +756,7 @@ public abstract class MinecraftServer extends ReentrantIAsyncHandler<TasksPerTic
 				lock.release();
 				MinecraftServer.LOGGER.info("Released CPU " + lock.cpuId() + " from server usage.");
 			}
-			// WindSpigot end
-			// WindSpigot start - stop statistics connection
-			Thread statisticsThread = null;
-			if (disableStatistics) {
-				StatisticsClient client = this.getWindSpigot().getClient();
-				if (client != null && client.isConnected) {
-					Runnable runnable = (() -> {
-						try {
-							// Signal that there is one less server
-							client.sendMessage("removed server");
-							// This tells the server to stop listening for messages from this client
-							client.sendMessage(".");
-							client.stop();
-						} catch (IOException e) {
-							e.printStackTrace();
-						}
-					});
-					statisticsThread = new Thread(runnable);
-					statisticsThread.start();
-				}
-			}
-			// WindSpigot end
+
 			try {
 				org.spigotmc.WatchdogThread.doStop();
 				this.isStopped = true;
@@ -807,13 +772,6 @@ public abstract class MinecraftServer extends ReentrantIAsyncHandler<TasksPerTic
 				// CraftBukkit end
 				this.z();
 			}
-			// WindSpigot - wait for statistics to finish stopping
-			try {
-				if (this.getWindSpigot().getClient().isConnected) {
-					statisticsThread.join(1500);
-				}
-			} catch (Throwable ignored) {
-			}
 		}
 
 	}
@@ -821,7 +779,9 @@ public abstract class MinecraftServer extends ReentrantIAsyncHandler<TasksPerTic
 	// WindSpigot start - backport modern tick loop
     private boolean haveTime() {
         // CraftBukkit start
-        if (isOversleep) return canOversleep();// Paper - because of our changes, this logic is broken
+        if (isOversleep) {
+			return canOversleep();// Paper - because of our changes, this logic is broken
+		}
         return this.forceTicks || this.runningTask() || getMillis() < (this.mayHaveDelayedTasks ? this.delayedTasksMaxNextTickTime : this.nextTickTime);
     }
     // Paper start

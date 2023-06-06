@@ -1588,17 +1588,14 @@ public class PlayerConnection implements PacketListenerPlayIn, IUpdatePlayerList
 
 		case 3:
 			this.player.setSprinting(true);
-			this.player.setExtraKnockback(true);
 			break;
 
 		case 4:
 			this.player.setSprinting(false);
-			this.player.setExtraKnockback(false);
 			break;
 
 		case 5:
 			this.player.a(false, true, true);
-			// this.checkMovement = false; // CraftBukkit - this is handled in teleport
 			break;
 
 		case 6:

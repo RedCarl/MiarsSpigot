@@ -2,6 +2,7 @@ package org.bukkit.entity;
 
 import java.net.InetSocketAddress;
 
+import gg.kazerspigot.knockback.KnockBackProfile;
 import org.bukkit.Achievement;
 import org.bukkit.ChatColor;
 import org.bukkit.Effect;
@@ -1449,5 +1450,8 @@ public interface Player extends HumanEntity, Conversable, CommandSender, Offline
 	 * @return the integer ping of the player
 	 */
 	int getPing();
+
+	KnockBackProfile getKnockBack();
+	void setKnockBack(KnockBackProfile knockBackProfile);
 	// WindSpigot end
 }

@@ -5,6 +5,7 @@ import java.util.Map;
 import org.bukkit.entity.Entity;
 
 import com.google.common.base.Function;
+import org.bukkit.entity.Player;
 
 /**
  * Called when an entity is damaged by an entity

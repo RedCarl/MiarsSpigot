@@ -1,14 +1,11 @@
 package net.minecraft.server;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
 // CraftBukkit start
+import gg.kazerspigot.knockback.KnockBackProfile;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.WeatherType;
 import org.bukkit.craftbukkit.CraftWorld;
 import org.bukkit.craftbukkit.entity.CraftPlayer;
@@ -26,49 +23,99 @@ import io.netty.buffer.Unpooled;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 
 public class EntityPlayer extends EntityHuman implements ICrafting {
+	// private static final Logger bH = LogManager.getLogger();
 
-	//private static final Logger bH = LogManager.getLogger(); // WindSpigot - remove unused logger
-	public String locale = "en_US"; // Spigot
+	public String locale = "en_US";
+
 	public PlayerConnection playerConnection;
+
 	public final MinecraftServer server;
+
 	public final PlayerInteractManager playerInteractManager;
+
 	public double d;
+
 	public double e;
+
 	public final List<ChunkCoordIntPair> chunkCoordIntPairQueue = Lists.newLinkedList();
-	// public final List<Integer> removeQueue = Lists.newLinkedList();
+
+	public final Set<ChunkCoordIntPair> paddingChunks = new HashSet<>();
+
 	private final ServerStatisticManager bK;
+
 	private float bL = Float.MIN_VALUE;
+
 	private float bM = -1.0E8F;
+
 	private int bN = -99999999;
+
 	private boolean bO = true;
+
 	public int lastSentExp = -99999999;
+
 	public int invulnerableTicks = 60;
+
 	private EntityHuman.EnumChatVisibility bR;
+
+	private boolean bS = true;
+
 	private long bT = System.currentTimeMillis();
+
 	private Entity bU = null;
+
 	private int containerCounter;
+
 	public boolean g;
+
 	public int ping;
+
 	public boolean viewingCredits;
+
+	public String displayName;
+
+	public IChatBaseComponent listName;
+
+	public Location compassTarget;
+
+	public int newExp = 0;
+
+	public int newLevel = 0;
+
+	public int newTotalExp = 0;
+
+	public boolean keepLevel = false;
+
+	public double maxHealthCache;
+
+	public boolean joining = true;
+
+	public int lastPing = -1;
+
+	public boolean fakingDeath = false;
+
+	public int sprintTicks = 0;
+
+	public boolean collidesWithEntities = true;
+
+	public int viewDistance;
+
+	private int containerUpdateDelay;
+
+	public List<EntityPotion> potions = new ArrayList<>();
+
 	public int playerMapX;
+
 	public int playerMapZ;
 
-	// CraftBukkit start
-	public String displayName;
-	public IChatBaseComponent listName;
-	public org.bukkit.Location compassTarget;
-	public int newExp = 0;
-	public int newLevel = 0;
-	public int newTotalExp = 0;
-	public boolean keepLevel = false;
-	public double maxHealthCache;
-	public boolean joining = true;
-	// CraftBukkit end
-	// Spigot start
-	public boolean collidesWithEntities = true;
-	public int viewDistance; // PaperSpigot - Player view distance API
-	/* private int containerUpdateDelay; */ // PaperSpigot
-	public List<EntityPotion> potions = new ArrayList<>(); // IonSpigot - Lag Compensated Potions
+	public long timeOffset;
+
+	public boolean relativeTime;
+
+	public WeatherType weather;
+
+	private float pluginRainPosition;
+
+	private float pluginRainPositionPrevious;
 
 	@Override
 	public boolean ad() {
@@ -120,6 +167,16 @@ public class EntityPlayer extends EntityHuman implements ICrafting {
 		// this.canPickUpLoot = true; TODO
 		this.maxHealthCache = this.getMaxHealth();
 		// CraftBukkit end
+	}
+
+
+	@Override
+	public void setSprinting(boolean flag) {
+		if (flag && !isSprinting()) {
+			this.shouldDealSprintKnockBack = true;
+			this.sprintTicks = (getKnockBack()).sprintTicks.value;
+		}
+		super.setSprinting(flag);
 	}
 
 	@Override
@@ -240,6 +297,14 @@ public class EntityPlayer extends EntityHuman implements ICrafting {
 		 * 
 		 * this.playerConnection.sendPacket(new PacketPlayOutEntityDestroy(aint)); }
 		 */
+
+		if (!isSprinting()) {
+			if (this.sprintTicks > 0) {
+				this.sprintTicks--;
+			} else {
+				this.shouldDealSprintKnockBack = false;
+			}
+		}
 
 		if (!this.chunkCoordIntPairQueue.isEmpty()) {
 			ArrayList<Chunk> chunkList = Lists.newArrayList();
@@ -1205,10 +1270,6 @@ public class EntityPlayer extends EntityHuman implements ICrafting {
 		return listName; // CraftBukkit
 	}
 
-	// CraftBukkit start - Add per-player time and weather.
-	public long timeOffset = 0;
-	public boolean relativeTime = true;
-
 	public long getPlayerTime() {
 		if (this.relativeTime) {
 			// Adds timeOffset to the current server time.
@@ -1218,8 +1279,6 @@ public class EntityPlayer extends EntityHuman implements ICrafting {
 			return this.world.getDayTime() - (this.world.getDayTime() % 24000) + this.timeOffset;
 		}
 	}
-
-	public WeatherType weather = null;
 
 	public WeatherType getPlayerWeather() {
 		return this.weather;
@@ -1240,9 +1299,6 @@ public class EntityPlayer extends EntityHuman implements ICrafting {
 			this.playerConnection.sendPacket(new PacketPlayOutGameStateChange(1, 0));
 		}
 	}
-
-	private float pluginRainPosition;
-	private float pluginRainPositionPrevious;
 
 	public void updateWeather(float oldRain, float newRain, float oldThunder, float newThunder) {
 		if (this.weather == null) {

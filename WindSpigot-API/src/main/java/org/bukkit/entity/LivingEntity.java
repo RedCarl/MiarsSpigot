@@ -13,8 +13,6 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.projectiles.ProjectileSource;
 
-import dev.cobblesword.nachospigot.knockback.KnockbackProfile;
-
 /**
  * Represents a living entity, such as a monster or player
  */
@@ -245,17 +243,6 @@ public interface LivingEntity extends Entity, Damageable, ProjectileSource {
 	 * @param ticks amount of no damage ticks
 	 */
 	public void setNoDamageTicks(int ticks);
-
-	/**
-	 * Gets the knockback profile of this player.
-	 */
-	KnockbackProfile getKnockbackProfile();
-
-	/**
-	 * Sets the knockback profile of this player. The player's knockback profile
-	 * overrides the global knockback profile.
-	 */
-	void setKnockbackProfile(KnockbackProfile profile);
 
 	/**
 	 * Gets the player identified as the killer of the living entity.

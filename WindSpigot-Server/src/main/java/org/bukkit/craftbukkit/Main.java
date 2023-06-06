@@ -24,14 +24,7 @@ public class Main {
 
 	public static void main(String[] args) {
 		System.setProperty("log4j2.formatMsgNoLookups", "true");
-		try {
-			if (!SystemUtils.isJavaVersionAtLeast(JavaVersion.JAVA_17)) {
-				System.err.println("It seems like you are not using Java 17!");
-				System.out.println("The use of Java 17 is strongly recommended.");
-			}
-		} catch (Exception ignored) {
-			System.err.println("Failed to get Java version! Continuing either way..");
-		}
+
 		OptionParser parser = new OptionParser() {
 			{
 				acceptsAll(asList("?", "help"), "Show the help");
@@ -187,16 +180,8 @@ public class Main {
 							"Please see http://www.spigotmc.org/wiki/changing-permgen-size/ for more details and more in-depth instructions.");
 				}
 				// Spigot End
-				net.techcable.tacospigot.TacoSpigotConfig.init((File) options.valueOf("taco-settings")); // TacoSpigot -
-																											// load
-																											// config
-																											// before we
-																											// load
-																											// libraries
-																											// to allow
-																											// access
-																											// while
-																											// loading
+				net.techcable.tacospigot.TacoSpigotConfig.init((File) options.valueOf("taco-settings"));
+
 				System.out.println("Loading libraries, please wait...");
 
 				DispenserRegistry.c();
